@@ -6,26 +6,31 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Lock, Church } from "lucide-react";
+import { Lock, Mail, Church } from "lucide-react";
 import { toast } from "sonner";
 
 export default function LoginPage() {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { login, isAuthenticated } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const { signIn, user } = useAuth();
   const navigate = useNavigate();
 
-  if (isAuthenticated) {
+  if (user) {
     navigate("/dashboard");
     return null;
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(password)) {
-      toast.success("Bem-vindo à área do membro!");
-      navigate("/dashboard");
+    setLoading(true);
+    const { error } = await signIn(email, password);
+    setLoading(false);
+    if (error) {
+      toast.error("Erro ao entrar: " + error);
     } else {
-      toast.error("Senha incorreta. Tente novamente.");
+      toast.success("Bem-vindo!");
+      navigate("/dashboard");
     }
   };
 
@@ -38,26 +43,37 @@ export default function LoginPage() {
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
               <Church className="h-8 w-8 text-primary" />
             </div>
-            <CardTitle className="font-serif text-2xl">Área do Membro</CardTitle>
+            <CardTitle className="font-sans text-2xl">Área do Membro</CardTitle>
             <CardDescription>
-              Insira a senha fornecida pela secretaria da igreja para acessar.
+              Faça login com seu email e senha fornecidos pela secretaria.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10"
+                  required
+                />
+              </div>
+              <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="password"
-                  placeholder="Senha de acesso"
+                  placeholder="Senha"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10"
                   required
                 />
               </div>
-              <Button type="submit" className="w-full">
-                Entrar
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Entrando..." : "Entrar"}
               </Button>
             </form>
           </CardContent>

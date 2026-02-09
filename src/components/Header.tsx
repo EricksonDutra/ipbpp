@@ -1,12 +1,11 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Church, Menu, X, LogOut } from "lucide-react";
+import { Church, Menu, X, LogOut, Shield } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 export function PublicHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const location = useLocation();
 
   const links = [
     { to: "/", label: "Início" },
@@ -21,7 +20,7 @@ export function PublicHeader() {
         <Link to="/" className="flex items-center gap-2">
           <Church className="h-7 w-7 text-primary" />
           <div className="leading-tight">
-            <span className="block text-sm font-bold font-serif text-primary">IPB Ponta Porã</span>
+            <span className="block text-sm font-bold font-sans text-primary">IPB Ponta Porã</span>
             <span className="block text-[10px] text-muted-foreground">Igreja Presbiteriana do Brasil</span>
           </div>
         </Link>
@@ -59,20 +58,32 @@ export function PublicHeader() {
 }
 
 export function MemberHeader() {
-  const { logout } = useAuth();
+  const { signOut, isAdmin, profile } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 border-b bg-primary">
       <div className="container flex h-14 items-center justify-between">
         <Link to="/dashboard" className="flex items-center gap-2">
           <Church className="h-6 w-6 text-primary-foreground" />
-          <span className="text-sm font-bold font-serif text-primary-foreground">Área do Membro</span>
+          <span className="text-sm font-bold font-sans text-primary-foreground">
+            {isAdmin ? "Painel Administrativo" : "Área do Membro"}
+          </span>
         </Link>
         <div className="flex items-center gap-4">
+          {profile && (
+            <span className="text-xs text-primary-foreground/70 hidden sm:inline">
+              {profile.full_name}
+            </span>
+          )}
+          {isAdmin && (
+            <Link to="/admin" className="flex items-center gap-1 text-xs text-primary-foreground/70 hover:text-primary-foreground transition-colors">
+              <Shield className="h-3.5 w-3.5" /> Admin
+            </Link>
+          )}
           <Link to="/" className="text-xs text-primary-foreground/70 hover:text-primary-foreground transition-colors">
-            Voltar ao site
+            Site
           </Link>
-          <button onClick={logout} className="flex items-center gap-1 text-xs text-primary-foreground/70 hover:text-primary-foreground transition-colors">
+          <button onClick={signOut} className="flex items-center gap-1 text-xs text-primary-foreground/70 hover:text-primary-foreground transition-colors">
             <LogOut className="h-3.5 w-3.5" /> Sair
           </button>
         </div>
