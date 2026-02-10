@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { MemberHeader } from "@/components/Header";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   UserPlus, Users, CheckCircle, XCircle,
   DollarSign, FolderKanban, Plus, Trash2, Pencil,
+  Upload, FileText, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -34,6 +35,7 @@ interface FinancialRow {
   year: number;
   receita: number;
   despesa: number;
+  document_url: string | null;
 }
 
 interface ProjectRow {
@@ -66,6 +68,8 @@ export default function AdminPage() {
   const [editingFinancial, setEditingFinancial] = useState<FinancialRow | null>(null);
   const [financialForm, setFinancialForm] = useState({ month: "Janeiro", year: new Date().getFullYear(), receita: 0, despesa: 0 });
   const [submittingFinancial, setSubmittingFinancial] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Projects state
   const [projects, setProjects] = useState<ProjectRow[]>([]);
@@ -128,37 +132,101 @@ export default function AdminPage() {
       setEditingFinancial(null);
       setFinancialForm({ month: "Janeiro", year: new Date().getFullYear(), receita: 0, despesa: 0 });
     }
+    setSelectedFile(null);
     setShowFinancialDialog(true);
+  };
+
+  const uploadDocument = async (reportId: string): Promise<string | null> => {
+    if (!selectedFile) return null;
+    const ext = selectedFile.name.split(".").pop();
+    const filePath = `${reportId}.${ext}`;
+
+    // Remove old file if exists
+    await supabase.storage.from("financial-docs").remove([filePath]);
+
+    const { error } = await supabase.storage
+      .from("financial-docs")
+      .upload(filePath, selectedFile, { upsert: true });
+
+    if (error) {
+      toast.error("Erro ao fazer upload: " + error.message);
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("financial-docs")
+      .getPublicUrl(filePath);
+
+    return urlData.publicUrl;
   };
 
   const handleFinancialSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmittingFinancial(true);
+
     if (editingFinancial) {
+      let documentUrl = editingFinancial.document_url;
+
+      if (selectedFile) {
+        const url = await uploadDocument(editingFinancial.id);
+        if (url) documentUrl = url;
+      }
+
       const { error } = await supabase.from("financial_reports").update({
         month: financialForm.month,
         year: financialForm.year,
         receita: financialForm.receita,
         despesa: financialForm.despesa,
+        document_url: documentUrl,
       }).eq("id", editingFinancial.id);
       if (error) toast.error("Erro ao atualizar: " + error.message);
       else toast.success("Relatório atualizado!");
     } else {
-      const { error } = await supabase.from("financial_reports").insert({
+      // Insert first to get ID, then upload
+      const { data: inserted, error } = await supabase.from("financial_reports").insert({
         month: financialForm.month,
         year: financialForm.year,
         receita: financialForm.receita,
         despesa: financialForm.despesa,
-      });
-      if (error) toast.error("Erro ao criar: " + error.message);
-      else toast.success("Relatório adicionado!");
+      }).select("id").single();
+
+      if (error) {
+        toast.error("Erro ao criar: " + error.message);
+      } else {
+        if (selectedFile && inserted) {
+          const url = await uploadDocument(inserted.id);
+          if (url) {
+            await supabase.from("financial_reports").update({ document_url: url }).eq("id", inserted.id);
+          }
+        }
+        toast.success("Relatório adicionado!");
+      }
     }
     setSubmittingFinancial(false);
     setShowFinancialDialog(false);
+    setSelectedFile(null);
+    fetchAll();
+  };
+
+  const removeDocument = async (report: FinancialRow) => {
+    if (!report.document_url) return;
+    // Extract filename from URL
+    const parts = report.document_url.split("/");
+    const fileName = parts[parts.length - 1];
+    await supabase.storage.from("financial-docs").remove([fileName]);
+    await supabase.from("financial_reports").update({ document_url: null }).eq("id", report.id);
+    toast.success("Documento removido!");
     fetchAll();
   };
 
   const deleteFinancial = async (id: string) => {
+    // Also remove associated file
+    const report = financials.find((f) => f.id === id);
+    if (report?.document_url) {
+      const parts = report.document_url.split("/");
+      const fileName = parts[parts.length - 1];
+      await supabase.storage.from("financial-docs").remove([fileName]);
+    }
     const { error } = await supabase.from("financial_reports").delete().eq("id", id);
     if (error) toast.error("Erro ao excluir: " + error.message);
     else { toast.success("Relatório excluído!"); fetchAll(); }
@@ -332,6 +400,7 @@ export default function AdminPage() {
                           <th className="text-right py-3 font-semibold">Receita</th>
                           <th className="text-right py-3 font-semibold">Despesa</th>
                           <th className="text-right py-3 font-semibold">Saldo</th>
+                          <th className="text-center py-3 font-semibold">Documento</th>
                           <th className="text-right py-3 font-semibold">Ações</th>
                         </tr>
                       </thead>
@@ -339,9 +408,25 @@ export default function AdminPage() {
                         {financials.map((f) => (
                           <tr key={f.id} className="border-b last:border-0 hover:bg-muted/50">
                             <td className="py-3 font-medium">{f.month}/{f.year}</td>
-                            <td className="py-3 text-right text-green-600 dark:text-green-400 font-medium">R$ {Number(f.receita).toLocaleString("pt-BR")}</td>
+                            <td className="py-3 text-right font-medium">R$ {Number(f.receita).toLocaleString("pt-BR")}</td>
                             <td className="py-3 text-right text-destructive font-medium">R$ {Number(f.despesa).toLocaleString("pt-BR")}</td>
                             <td className="py-3 text-right font-bold">R$ {(Number(f.receita) - Number(f.despesa)).toLocaleString("pt-BR")}</td>
+                            <td className="py-3 text-center">
+                              {f.document_url ? (
+                                <div className="flex items-center justify-center gap-1">
+                                  <a href={f.document_url} target="_blank" rel="noopener noreferrer">
+                                    <Button size="sm" variant="outline" className="gap-1">
+                                      <FileText className="h-3.5 w-3.5" /> Ver
+                                    </Button>
+                                  </a>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeDocument(f)}>
+                                    <X className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">—</span>
+                              )}
+                            </td>
                             <td className="py-3 text-right space-x-1">
                               <Button size="icon" variant="ghost" onClick={() => openFinancialDialog(f)}><Pencil className="h-4 w-4" /></Button>
                               <Button size="icon" variant="ghost" className="text-destructive" onClick={() => deleteFinancial(f.id)}><Trash2 className="h-4 w-4" /></Button>
@@ -386,6 +471,36 @@ export default function AdminPage() {
                       <Input type="number" step="0.01" value={financialForm.despesa} onChange={(e) => setFinancialForm({ ...financialForm, despesa: parseFloat(e.target.value) || 0 })} />
                     </div>
                   </div>
+
+                  {/* File upload */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Detalhamento (PDF, imagem, etc.)</label>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx"
+                      className="hidden"
+                      onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                    />
+                    <div className="flex items-center gap-2">
+                      <Button type="button" variant="outline" className="gap-1.5" onClick={() => fileInputRef.current?.click()}>
+                        <Upload className="h-4 w-4" /> {selectedFile ? "Trocar arquivo" : "Anexar arquivo"}
+                      </Button>
+                      {selectedFile && (
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <FileText className="h-4 w-4" />
+                          <span className="max-w-[200px] truncate">{selectedFile.name}</span>
+                          <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => setSelectedFile(null)}>
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                      {!selectedFile && editingFinancial?.document_url && (
+                        <span className="text-xs text-muted-foreground">Documento atual será mantido</span>
+                      )}
+                    </div>
+                  </div>
+
                   <DialogFooter>
                     <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
                     <Button type="submit" disabled={submittingFinancial}>{submittingFinancial ? "Salvando..." : "Salvar"}</Button>

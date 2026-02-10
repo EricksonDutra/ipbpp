@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { FileText } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -138,6 +139,7 @@ export default function Dashboard() {
                           <th className="text-right py-3 font-semibold">Receita</th>
                           <th className="text-right py-3 font-semibold">Despesa</th>
                           <th className="text-right py-3 font-semibold">Saldo</th>
+                          <th className="text-center py-3 font-semibold">Detalhes</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -147,6 +149,17 @@ export default function Dashboard() {
                             <td className="text-right text-success font-medium">R$ {Number(row.receita).toLocaleString("pt-BR")}</td>
                             <td className="text-right text-destructive font-medium">R$ {Number(row.despesa).toLocaleString("pt-BR")}</td>
                             <td className="text-right font-bold">R$ {(Number(row.receita) - Number(row.despesa)).toLocaleString("pt-BR")}</td>
+                            <td className="text-center">
+                              {row.document_url ? (
+                                <a href={row.document_url} target="_blank" rel="noopener noreferrer">
+                                  <Button size="sm" variant="outline" className="gap-1">
+                                    <FileText className="h-3.5 w-3.5" /> Ver
+                                  </Button>
+                                </a>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
