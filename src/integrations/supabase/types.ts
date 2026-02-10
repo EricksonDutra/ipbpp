@@ -48,6 +48,7 @@ export type Database = {
         Row: {
           created_at: string
           despesa: number
+          document_url: string | null
           id: string
           month: string
           receita: number
@@ -56,6 +57,7 @@ export type Database = {
         Insert: {
           created_at?: string
           despesa?: number
+          document_url?: string | null
           id?: string
           month: string
           receita?: number
@@ -64,6 +66,7 @@ export type Database = {
         Update: {
           created_at?: string
           despesa?: number
+          document_url?: string | null
           id?: string
           month?: string
           receita?: number
