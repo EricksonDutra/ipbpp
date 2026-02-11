@@ -62,6 +62,17 @@ export default function Dashboard() {
     }
   };
 
+  const handleOpenDocument = async (url: string) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+    } catch {
+      toast.error("Não foi possível abrir o documento.");
+    }
+  };
+
   const totalReceita = financials.reduce((s, d) => s + Number(d.receita), 0);
   const totalDespesa = financials.reduce((s, d) => s + Number(d.despesa), 0);
   const saldo = totalReceita - totalDespesa;
@@ -151,7 +162,7 @@ export default function Dashboard() {
                             <td className="text-right font-bold">R$ {(Number(row.receita) - Number(row.despesa)).toLocaleString("pt-BR")}</td>
                             <td className="text-center">
                               {row.document_url ? (
-                                <Button size="sm" variant="outline" className="gap-1" onClick={() => window.open(row.document_url, '_blank')}>
+                                <Button size="sm" variant="outline" className="gap-1" onClick={() => handleOpenDocument(row.document_url)}>
                                   <FileText className="h-3.5 w-3.5" /> Ver
                                 </Button>
                               ) : (
