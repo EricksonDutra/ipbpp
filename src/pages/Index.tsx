@@ -32,7 +32,7 @@ const Index = () => {
               </Button>
             </a>
             <Link to="/membros">
-              <Button size="lg" variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
+              <Button size="lg" variant="outline" className="border-2 border-white text-white bg-white/10 hover:bg-white/20">
                 Área do Membro
               </Button>
             </Link>
