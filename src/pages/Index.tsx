@@ -76,9 +76,9 @@ const Index = () => {
           <h2 className="text-3xl font-serif font-bold text-center mb-12">Nossos Cultos</h2>
           <div className="grid gap-6 md:grid-cols-3 max-w-3xl mx-auto">
             {[
-              { day: "Domingo", time: "9h00", name: "Culto Matutino" },
+              { day: "Domingo", time: "9h00", name: "Escola Bíblica Dominical" },
               { day: "Domingo", time: "19h00", name: "Culto Vespertino" },
-              { day: "Quarta-feira", time: "19h30", name: "Culto de Oração" },
+              { day: "Terça-feira", time: "19h30", name: "Culto de Oração" },
             ].map((culto) => (
               <Card key={culto.name} className="border shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="p-6 text-center">
