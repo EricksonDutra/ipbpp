@@ -7,7 +7,7 @@ export function Footer() {
         <div className="grid gap-8 md:grid-cols-3">
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <img src={ipbLogo} alt="IPB Logo" className="h-8 w-8 object-contain" />
+              <img src={ipbLogo} alt="Logo IPB" className="h-10 w-10 object-contain brightness-0 invert" />
               <span className="font-serif font-bold">IPB Ponta Porã</span>
             </div>
             <p className="text-sm text-primary-foreground/70">
