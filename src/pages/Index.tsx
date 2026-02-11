@@ -4,7 +4,7 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { BookOpen, Clock, Heart, MapPin, Phone, Users } from "lucide-react";
+import { BookOpen, Clock, Heart, MapPin, Phone, Users, Church } from "lucide-react";
 
 const Index = () => {
   return (
