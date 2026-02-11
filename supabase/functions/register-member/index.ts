@@ -7,6 +7,10 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const PHONE_REGEX = /^\+?[0-9\s\-()]{7,20}$/;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -53,8 +57,10 @@ serve(async (req) => {
       });
     }
 
-    const { email, password, full_name, phone } = await req.json();
+    const body = await req.json();
+    const { email, password, full_name, phone } = body;
 
+    // Input validation
     if (!email || !password || !full_name) {
       return new Response(JSON.stringify({ error: "Email, senha e nome são obrigatórios" }), {
         status: 400,
@@ -62,16 +68,47 @@ serve(async (req) => {
       });
     }
 
+    if (typeof email !== "string" || !EMAIL_REGEX.test(email) || email.length > 255) {
+      return new Response(JSON.stringify({ error: "Formato de email inválido" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (typeof password !== "string" || password.length < 8 || password.length > 128) {
+      return new Response(JSON.stringify({ error: "A senha deve ter entre 8 e 128 caracteres" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (typeof full_name !== "string" || full_name.trim().length < 2 || full_name.length > 100) {
+      return new Response(JSON.stringify({ error: "O nome deve ter entre 2 e 100 caracteres" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (phone !== undefined && phone !== null && phone !== "") {
+      if (typeof phone !== "string" || !PHONE_REGEX.test(phone)) {
+        return new Response(JSON.stringify({ error: "Formato de telefone inválido" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // Create user
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email,
+      email: email.trim(),
       password,
       email_confirm: true,
-      user_metadata: { full_name },
+      user_metadata: { full_name: full_name.trim() },
     });
 
     if (createError) {
-      return new Response(JSON.stringify({ error: createError.message }), {
+      console.error("User creation failed:", createError);
+      return new Response(JSON.stringify({ error: "Não foi possível criar o membro. Verifique os dados e tente novamente." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -81,7 +118,7 @@ serve(async (req) => {
     if (phone) {
       await supabaseAdmin
         .from("profiles")
-        .update({ phone, full_name })
+        .update({ phone: phone.trim(), full_name: full_name.trim() })
         .eq("id", newUser.user.id);
     }
 
@@ -96,7 +133,8 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    console.error("Unexpected error in register-member:", err);
+    return new Response(JSON.stringify({ error: "Ocorreu um erro interno. Tente novamente mais tarde." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
