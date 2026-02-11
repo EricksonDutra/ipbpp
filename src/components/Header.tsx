@@ -19,7 +19,7 @@ export function PublicHeader() {
     <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
-          <img src={ipbLogo} alt="IPB Logo" className="h-8 w-8 object-contain" />
+          <img src={ipbLogo} alt="Logo IPB" className="h-10 w-10 object-contain" />
           <div className="leading-tight">
             <span className="block text-sm font-bold font-sans text-primary">IPB Ponta Porã</span>
             <span className="block text-[10px] text-muted-foreground">Igreja Presbiteriana do Brasil</span>
@@ -65,7 +65,7 @@ export function MemberHeader() {
     <header className="sticky top-0 z-50 border-b bg-primary">
       <div className="container flex h-14 items-center justify-between">
         <Link to="/dashboard" className="flex items-center gap-2">
-          <img src={ipbLogo} alt="IPB Logo" className="h-6 w-6 object-contain" />
+          <img src={ipbLogo} alt="Logo IPB" className="h-7 w-7 object-contain brightness-0 invert" />
           <span className="text-sm font-bold font-sans text-primary-foreground">
             {isAdmin ? "Painel Administrativo" : "Área do Membro"}
           </span>
