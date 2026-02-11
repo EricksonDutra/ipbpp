@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Church, Menu, X, LogOut, Shield } from "lucide-react";
+import { Menu, X, LogOut, Shield } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import ipbLogo from "@/assets/ipb-logo.png";
 
 export function PublicHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -18,7 +19,7 @@ export function PublicHeader() {
     <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
-          <Church className="h-7 w-7 text-primary" />
+          <img src={ipbLogo} alt="IPB Logo" className="h-8 w-8 object-contain" />
           <div className="leading-tight">
             <span className="block text-sm font-bold font-sans text-primary">IPB Ponta Porã</span>
             <span className="block text-[10px] text-muted-foreground">Igreja Presbiteriana do Brasil</span>
@@ -64,7 +65,7 @@ export function MemberHeader() {
     <header className="sticky top-0 z-50 border-b bg-primary">
       <div className="container flex h-14 items-center justify-between">
         <Link to="/dashboard" className="flex items-center gap-2">
-          <Church className="h-6 w-6 text-primary-foreground" />
+          <img src={ipbLogo} alt="IPB Logo" className="h-6 w-6 object-contain" />
           <span className="text-sm font-bold font-sans text-primary-foreground">
             {isAdmin ? "Painel Administrativo" : "Área do Membro"}
           </span>
