@@ -153,11 +153,8 @@ export default function AdminPage() {
       return null;
     }
 
-    const { data: urlData } = supabase.storage
-      .from("financial-docs")
-      .getPublicUrl(filePath);
-
-    return urlData.publicUrl;
+    // Store the file path, not a public URL (bucket is private)
+    return filePath;
   };
 
   const handleFinancialSubmit = async (e: React.FormEvent) => {
@@ -210,10 +207,7 @@ export default function AdminPage() {
 
   const removeDocument = async (report: FinancialRow) => {
     if (!report.document_url) return;
-    // Extract filename from URL
-    const parts = report.document_url.split("/");
-    const fileName = parts[parts.length - 1];
-    await supabase.storage.from("financial-docs").remove([fileName]);
+    await supabase.storage.from("financial-docs").remove([report.document_url]);
     await supabase.from("financial_reports").update({ document_url: null }).eq("id", report.id);
     toast.success("Documento removido!");
     fetchAll();
@@ -223,9 +217,7 @@ export default function AdminPage() {
     // Also remove associated file
     const report = financials.find((f) => f.id === id);
     if (report?.document_url) {
-      const parts = report.document_url.split("/");
-      const fileName = parts[parts.length - 1];
-      await supabase.storage.from("financial-docs").remove([fileName]);
+      await supabase.storage.from("financial-docs").remove([report.document_url]);
     }
     const { error } = await supabase.from("financial_reports").delete().eq("id", id);
     if (error) toast.error("Erro ao excluir: " + error.message);
@@ -414,11 +406,13 @@ export default function AdminPage() {
                             <td className="py-3 text-center">
                               {f.document_url ? (
                                 <div className="flex items-center justify-center gap-1">
-                                  <a href={f.document_url} target="_blank" rel="noopener noreferrer">
-                                    <Button size="sm" variant="outline" className="gap-1">
-                                      <FileText className="h-3.5 w-3.5" /> Ver
-                                    </Button>
-                                  </a>
+                                  <Button size="sm" variant="outline" className="gap-1" onClick={async () => {
+                                    const { data } = await supabase.storage.from("financial-docs").createSignedUrl(f.document_url!, 3600);
+                                    if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+                                    else toast.error("Não foi possível abrir o documento.");
+                                  }}>
+                                    <FileText className="h-3.5 w-3.5" /> Ver
+                                  </Button>
                                   <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeDocument(f)}>
                                     <X className="h-3.5 w-3.5" />
                                   </Button>

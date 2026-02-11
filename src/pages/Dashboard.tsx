@@ -62,12 +62,14 @@ export default function Dashboard() {
     }
   };
 
-  const handleOpenDocument = async (url: string) => {
+  const handleOpenDocument = async (filePath: string) => {
     try {
-      const res = await fetch(url);
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      window.open(blobUrl, '_blank');
+      const { data } = await supabase.storage.from("financial-docs").createSignedUrl(filePath, 3600);
+      if (data?.signedUrl) {
+        window.open(data.signedUrl, '_blank');
+      } else {
+        toast.error("Não foi possível abrir o documento.");
+      }
     } catch {
       toast.error("Não foi possível abrir o documento.");
     }
