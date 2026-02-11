@@ -151,11 +151,9 @@ export default function Dashboard() {
                             <td className="text-right font-bold">R$ {(Number(row.receita) - Number(row.despesa)).toLocaleString("pt-BR")}</td>
                             <td className="text-center">
                               {row.document_url ? (
-                                <a href={row.document_url} target="_blank" rel="noopener noreferrer">
-                                  <Button size="sm" variant="outline" className="gap-1">
-                                    <FileText className="h-3.5 w-3.5" /> Ver
-                                  </Button>
-                                </a>
+                                <Button size="sm" variant="outline" className="gap-1" onClick={() => window.open(row.document_url, '_blank')}>
+                                  <FileText className="h-3.5 w-3.5" /> Ver
+                                </Button>
                               ) : (
                                 <span className="text-xs text-muted-foreground">—</span>
                               )}
