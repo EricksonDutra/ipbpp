@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   UserPlus, Users, CheckCircle, XCircle,
   DollarSign, FolderKanban, Plus, Trash2, Pencil,
-  Upload, FileText, X,
+  Upload, FileText, X, HeartHandshake, PartyPopper,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -44,6 +44,16 @@ interface ProjectRow {
   description: string | null;
   status: string;
   progress: number;
+}
+
+interface VisitorRow {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  email: string | null;
+  notes: string | null;
+  visit_date: string;
+  created_at: string;
 }
 
 const MONTHS = [
@@ -78,6 +88,14 @@ export default function AdminPage() {
   const [projectForm, setProjectForm] = useState({ name: "", description: "", status: "Planejamento", progress: 0 });
   const [submittingProject, setSubmittingProject] = useState(false);
 
+  // Visitors state
+  const [visitors, setVisitors] = useState<VisitorRow[]>([]);
+  const [showVisitorForm, setShowVisitorForm] = useState(false);
+  const [visitorForm, setVisitorForm] = useState({ full_name: "", phone: "", email: "", notes: "", visit_date: new Date().toISOString().split("T")[0] });
+  const [submittingVisitor, setSubmittingVisitor] = useState(false);
+  const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
+  const [lastVisitorName, setLastVisitorName] = useState("");
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -85,14 +103,16 @@ export default function AdminPage() {
   }, []);
 
   const fetchAll = async () => {
-    const [membersRes, financialsRes, projectsRes] = await Promise.all([
+    const [membersRes, financialsRes, projectsRes, visitorsRes] = await Promise.all([
       supabase.from("profiles").select("id, full_name, phone, active"),
       supabase.from("financial_reports").select("*").order("year", { ascending: false }).order("month", { ascending: true }),
       supabase.from("church_projects").select("*").order("created_at", { ascending: false }),
+      supabase.from("visitors").select("*").order("visit_date", { ascending: false }),
     ]);
     setMembers(membersRes.data || []);
     setFinancials(financialsRes.data || []);
     setProjects(projectsRes.data || []);
+    setVisitors(visitorsRes.data as VisitorRow[] || []);
     setLoading(false);
   };
 
@@ -270,6 +290,36 @@ export default function AdminPage() {
     else { toast.success("Projeto excluído!"); fetchAll(); }
   };
 
+  // ─── Visitors ─────────────────────────────────────
+  const handleVisitorSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!visitorForm.full_name.trim()) return;
+    setSubmittingVisitor(true);
+    const { error } = await supabase.from("visitors").insert({
+      full_name: visitorForm.full_name.trim(),
+      phone: visitorForm.phone.trim() || null,
+      email: visitorForm.email.trim() || null,
+      notes: visitorForm.notes.trim() || null,
+      visit_date: visitorForm.visit_date,
+    } as any);
+    setSubmittingVisitor(false);
+    if (error) {
+      toast.error("Erro ao cadastrar visitante: " + error.message);
+    } else {
+      setLastVisitorName(visitorForm.full_name.trim());
+      setShowWelcomeDialog(true);
+      setVisitorForm({ full_name: "", phone: "", email: "", notes: "", visit_date: new Date().toISOString().split("T")[0] });
+      setShowVisitorForm(false);
+      fetchAll();
+    }
+  };
+
+  const deleteVisitor = async (id: string) => {
+    const { error } = await supabase.from("visitors").delete().eq("id", id);
+    if (error) toast.error("Erro ao excluir: " + error.message);
+    else { toast.success("Visitante removido!"); fetchAll(); }
+  };
+
   // ─── Render ────────────────────────────────────────
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
@@ -277,13 +327,16 @@ export default function AdminPage() {
       <main className="flex-1 container py-8">
         <div className="mb-8">
           <h1 className="text-2xl font-sans font-bold">Painel Administrativo</h1>
-          <p className="text-sm text-muted-foreground">Gerencie membros, finanças e projetos da igreja.</p>
+          <p className="text-sm text-muted-foreground">Gerencie membros, finanças, projetos e visitantes da igreja.</p>
         </div>
 
         <Tabs defaultValue="membros" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 max-w-lg">
+          <TabsList className="grid w-full grid-cols-4 max-w-2xl">
             <TabsTrigger value="membros" className="gap-1.5">
               <Users className="h-4 w-4" /> Membros
+            </TabsTrigger>
+            <TabsTrigger value="visitantes" className="gap-1.5">
+              <HeartHandshake className="h-4 w-4" /> Visitantes
             </TabsTrigger>
             <TabsTrigger value="financeiro" className="gap-1.5">
               <DollarSign className="h-4 w-4" /> Financeiro
@@ -580,7 +633,106 @@ export default function AdminPage() {
               </DialogContent>
             </Dialog>
           </TabsContent>
+
+          {/* ─── TAB: VISITANTES ─── */}
+          <TabsContent value="visitantes">
+            <div className="flex justify-end mb-4">
+              <Button onClick={() => setShowVisitorForm(!showVisitorForm)} className="gap-1.5">
+                <UserPlus className="h-4 w-4" /> Novo Visitante
+              </Button>
+            </div>
+
+            {showVisitorForm && (
+              <Card className="mb-6">
+                <CardHeader><CardTitle className="font-sans text-lg">Cadastrar Visitante</CardTitle></CardHeader>
+                <CardContent>
+                  <form onSubmit={handleVisitorSubmit} className="grid gap-4 sm:grid-cols-2">
+                    <Input placeholder="Nome completo *" value={visitorForm.full_name} onChange={(e) => setVisitorForm({ ...visitorForm, full_name: e.target.value })} required />
+                    <Input placeholder="Telefone" value={visitorForm.phone} onChange={(e) => setVisitorForm({ ...visitorForm, phone: e.target.value })} />
+                    <Input type="email" placeholder="Email" value={visitorForm.email} onChange={(e) => setVisitorForm({ ...visitorForm, email: e.target.value })} />
+                    <Input type="date" value={visitorForm.visit_date} onChange={(e) => setVisitorForm({ ...visitorForm, visit_date: e.target.value })} />
+                    <div className="sm:col-span-2">
+                      <Textarea placeholder="Observações (como conheceu a igreja, pedidos, etc.)" value={visitorForm.notes} onChange={(e) => setVisitorForm({ ...visitorForm, notes: e.target.value })} rows={2} />
+                    </div>
+                    <div className="sm:col-span-2 flex gap-2">
+                      <Button type="submit" disabled={submittingVisitor}>{submittingVisitor ? "Cadastrando..." : "Cadastrar Visitante"}</Button>
+                      <Button type="button" variant="outline" onClick={() => setShowVisitorForm(false)}>Cancelar</Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+            )}
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-sans flex items-center gap-2">
+                  <HeartHandshake className="h-5 w-5" /> Visitantes ({visitors.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+                  </div>
+                ) : visitors.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">Nenhum visitante cadastrado.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-3 font-semibold">Nome</th>
+                          <th className="text-left py-3 font-semibold">Telefone</th>
+                          <th className="text-left py-3 font-semibold">Email</th>
+                          <th className="text-left py-3 font-semibold">Data da Visita</th>
+                          <th className="text-right py-3 font-semibold">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visitors.map((v) => (
+                          <tr key={v.id} className="border-b last:border-0 hover:bg-muted/50">
+                            <td className="py-3 font-medium">{v.full_name}</td>
+                            <td className="py-3 text-muted-foreground">{v.phone || "—"}</td>
+                            <td className="py-3 text-muted-foreground">{v.email || "—"}</td>
+                            <td className="py-3 text-muted-foreground">{new Date(v.visit_date + "T12:00:00").toLocaleDateString("pt-BR")}</td>
+                            <td className="py-3 text-right">
+                              <Button size="icon" variant="ghost" className="text-destructive h-7 w-7" onClick={() => deleteVisitor(v.id)}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
+
+        {/* Welcome Dialog */}
+        <Dialog open={showWelcomeDialog} onOpenChange={setShowWelcomeDialog}>
+          <DialogContent className="text-center max-w-md">
+            <div className="flex flex-col items-center gap-4 py-4">
+              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <PartyPopper className="h-8 w-8 text-primary" />
+              </div>
+              <DialogHeader>
+                <DialogTitle className="text-xl font-serif">Que alegria! 🎉</DialogTitle>
+              </DialogHeader>
+              <p className="text-muted-foreground leading-relaxed">
+                <span className="font-semibold text-foreground">{lastVisitorName}</span> foi cadastrado(a) com sucesso!
+              </p>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Que bênção receber mais uma pessoa especial em nossa igreja! 🙏✨ Que este seja o começo de uma caminhada linda e cheia de graça. Sejam todos muito bem-vindos!
+              </p>
+              <Button onClick={() => setShowWelcomeDialog(false)} className="mt-2 gap-1.5">
+                <HeartHandshake className="h-4 w-4" /> Amém! Obrigado!
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
