@@ -148,30 +148,42 @@ export type Database = {
       }
       visitors: {
         Row: {
+          cidade: string | null
           created_at: string
           email: string | null
           full_name: string
           id: string
+          is_ipb_member: boolean
           notes: string | null
+          other_church: string | null
           phone: string | null
+          uf: string | null
           visit_date: string
         }
         Insert: {
+          cidade?: string | null
           created_at?: string
           email?: string | null
           full_name: string
           id?: string
+          is_ipb_member?: boolean
           notes?: string | null
+          other_church?: string | null
           phone?: string | null
+          uf?: string | null
           visit_date?: string
         }
         Update: {
+          cidade?: string | null
           created_at?: string
           email?: string | null
           full_name?: string
           id?: string
+          is_ipb_member?: boolean
           notes?: string | null
+          other_church?: string | null
           phone?: string | null
+          uf?: string | null
           visit_date?: string
         }
         Relationships: []
