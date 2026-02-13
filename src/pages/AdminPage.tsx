@@ -12,7 +12,8 @@ import { Progress } from "@/components/ui/progress";
 import {
   UserPlus, Users, CheckCircle, XCircle,
   DollarSign, FolderKanban, Plus, Trash2, Pencil,
-  Upload, FileText, X, HeartHandshake,
+  Upload, FileText, X, HeartHandshake, ClipboardList,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -47,18 +48,28 @@ interface ProjectRow {
 }
 
 interface VisitorRow {
-  id: string;
-  full_name: string;
-  phone: string | null;
-  email: string | null;
-  cidade: string | null;
-  uf: string | null;
-  is_ipb_member: boolean;
-  other_church: string | null;
-  notes: string | null;
-  visit_date: string;
-  created_at: string;
+  id: string; full_name: string; phone: string | null; email: string | null;
+  cidade: string | null; uf: string | null; is_ipb_member: boolean;
+  other_church: string | null; notes: string | null; visit_date: string; created_at: string;
 }
+
+interface RequestRow {
+  id: string; user_id: string; request_type: string; description: string;
+  status: string; admin_notes: string | null; reviewed_at: string | null; created_at: string;
+}
+
+const REQUEST_TYPE_LABELS: Record<string, string> = {
+  salao_social: "Uso do Salão Social",
+  emprestimo_utensilios: "Empréstimo de Utensílios",
+  visita: "Visita",
+  outra: "Outra",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  pendente: "Pendente",
+  aprovada: "Aprovada",
+  rejeitada: "Rejeitada",
+};
 
 const MONTHS = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -95,6 +106,10 @@ export default function AdminPage() {
   // Visitors state
   const [visitors, setVisitors] = useState<VisitorRow[]>([]);
 
+  // Requests state
+  const [memberRequests, setMemberRequests] = useState<RequestRow[]>([]);
+  const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -102,16 +117,18 @@ export default function AdminPage() {
   }, []);
 
   const fetchAll = async () => {
-    const [membersRes, financialsRes, projectsRes, visitorsRes] = await Promise.all([
+    const [membersRes, financialsRes, projectsRes, visitorsRes, requestsRes] = await Promise.all([
       supabase.from("profiles").select("id, full_name, phone, active"),
       supabase.from("financial_reports").select("*").order("year", { ascending: false }).order("month", { ascending: true }),
       supabase.from("church_projects").select("*").order("created_at", { ascending: false }),
       supabase.from("visitors").select("*").order("visit_date", { ascending: false }),
+      supabase.from("member_requests").select("*").order("created_at", { ascending: false }),
     ]);
     setMembers(membersRes.data || []);
     setFinancials(financialsRes.data || []);
     setProjects(projectsRes.data || []);
     setVisitors(visitorsRes.data as VisitorRow[] || []);
+    setMemberRequests(requestsRes.data as RequestRow[] || []);
     setLoading(false);
   };
 
@@ -296,18 +313,32 @@ export default function AdminPage() {
     else { toast.success("Visitante removido!"); fetchAll(); }
   };
 
-  // ─── Render ────────────────────────────────────────
+  // ─── Requests ─────────────────────────────────────
+  const handleReviewRequest = async (id: string, newStatus: "aprovada" | "rejeitada") => {
+    const { error } = await supabase.from("member_requests").update({
+      status: newStatus,
+      admin_notes: reviewNotes[id]?.trim() || null,
+      reviewed_at: new Date().toISOString(),
+    } as any).eq("id", id);
+    if (error) toast.error("Erro ao atualizar: " + error.message);
+    else {
+      toast.success(newStatus === "aprovada" ? "Solicitação aprovada!" : "Solicitação rejeitada!");
+      setReviewNotes((prev) => { const n = { ...prev }; delete n[id]; return n; });
+      fetchAll();
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
       <MemberHeader />
       <main className="flex-1 container py-8">
         <div className="mb-8">
           <h1 className="text-2xl font-sans font-bold">Painel Administrativo</h1>
-          <p className="text-sm text-muted-foreground">Gerencie membros, finanças, projetos e visitantes da igreja.</p>
+          <p className="text-sm text-muted-foreground">Gerencie membros, finanças, projetos, visitantes e solicitações da igreja.</p>
         </div>
 
         <Tabs defaultValue="membros" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 max-w-2xl">
+          <TabsList className="grid w-full grid-cols-5 max-w-3xl">
             <TabsTrigger value="membros" className="gap-1.5">
               <Users className="h-4 w-4" /> Membros
             </TabsTrigger>
@@ -319,6 +350,9 @@ export default function AdminPage() {
             </TabsTrigger>
             <TabsTrigger value="projetos" className="gap-1.5">
               <FolderKanban className="h-4 w-4" /> Projetos
+            </TabsTrigger>
+            <TabsTrigger value="solicitacoes" className="gap-1.5">
+              <ClipboardList className="h-4 w-4" /> Solicitações
             </TabsTrigger>
           </TabsList>
 
@@ -676,6 +710,68 @@ export default function AdminPage() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ─── TAB: SOLICITAÇÕES ─── */}
+          <TabsContent value="solicitacoes">
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-sans flex items-center gap-2">
+                  <ClipboardList className="h-5 w-5" /> Solicitações ({memberRequests.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {memberRequests.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">Nenhuma solicitação recebida.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {memberRequests.map((r) => (
+                      <Card key={r.id} className={r.status === "pendente" ? "border-amber-300" : ""}>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge variant="secondary" className="text-xs">{REQUEST_TYPE_LABELS[r.request_type] || r.request_type}</Badge>
+                              <Badge variant={r.status === "aprovada" ? "default" : r.status === "rejeitada" ? "destructive" : "outline"} className="text-xs">
+                                {STATUS_LABELS[r.status] || r.status}
+                              </Badge>
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(r.created_at).toLocaleDateString("pt-BR")}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mb-1">
+                            Solicitante: <span className="font-medium text-foreground">{members.find(m => m.id === r.user_id)?.full_name || "—"}</span>
+                          </p>
+                          <p className="text-sm mb-3">{r.description}</p>
+                          {r.status === "pendente" && (
+                            <div className="space-y-2 pt-2 border-t">
+                              <Input
+                                placeholder="Observação do administrador (opcional)"
+                                value={reviewNotes[r.id] || ""}
+                                onChange={(e) => setReviewNotes((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                              />
+                              <div className="flex gap-2">
+                                <Button size="sm" className="gap-1" onClick={() => handleReviewRequest(r.id, "aprovada")}>
+                                  <Check className="h-3.5 w-3.5" /> Aprovar
+                                </Button>
+                                <Button size="sm" variant="destructive" className="gap-1" onClick={() => handleReviewRequest(r.id, "rejeitada")}>
+                                  <X className="h-3.5 w-3.5" /> Rejeitar
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                          {r.admin_notes && r.status !== "pendente" && (
+                            <div className="mt-2 p-2 rounded bg-muted text-sm">
+                              <span className="font-semibold text-xs">Observação:</span> {r.admin_notes}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
                 )}
               </CardContent>

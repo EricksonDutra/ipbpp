@@ -74,6 +74,42 @@ export type Database = {
         }
         Relationships: []
       }
+      member_requests: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          description: string
+          id: string
+          request_type: Database["public"]["Enums"]["request_type"]
+          reviewed_at: string | null
+          status: Database["public"]["Enums"]["request_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          request_type: Database["public"]["Enums"]["request_type"]
+          reviewed_at?: string | null
+          status?: Database["public"]["Enums"]["request_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          request_type?: Database["public"]["Enums"]["request_type"]
+          reviewed_at?: string | null
+          status?: Database["public"]["Enums"]["request_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       prayer_requests: {
         Row: {
           author_name: string
@@ -204,6 +240,12 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "member"
+      request_status: "pendente" | "aprovada" | "rejeitada"
+      request_type:
+        | "salao_social"
+        | "emprestimo_utensilios"
+        | "visita"
+        | "outra"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -332,6 +374,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "member"],
+      request_status: ["pendente", "aprovada", "rejeitada"],
+      request_type: [
+        "salao_social",
+        "emprestimo_utensilios",
+        "visita",
+        "outra",
+      ],
     },
   },
 } as const
