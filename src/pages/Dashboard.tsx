@@ -11,8 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   DollarSign, TrendingUp, TrendingDown, HandHeart,
-  FolderKanban, Heart, Send, Users
+  FolderKanban, Heart, Send, Users, ClipboardList
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -23,6 +26,9 @@ export default function Dashboard() {
   const [prayers, setPrayers] = useState<any[]>([]);
   const [financials, setFinancials] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
+  const [requests, setRequests] = useState<any[]>([]);
+  const [requestForm, setRequestForm] = useState({ request_type: "salao_social" as string, description: "" });
+  const [submittingRequest, setSubmittingRequest] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,14 +36,16 @@ export default function Dashboard() {
   }, []);
 
   const fetchData = async () => {
-    const [prayersRes, financialsRes, projectsRes] = await Promise.all([
+    const [prayersRes, financialsRes, projectsRes, requestsRes] = await Promise.all([
       supabase.from("prayer_requests").select("*").order("created_at", { ascending: false }),
       supabase.from("financial_reports").select("*").order("year", { ascending: true }).order("month", { ascending: true }),
       supabase.from("church_projects").select("*").order("created_at", { ascending: false }),
+      supabase.from("member_requests").select("*").order("created_at", { ascending: false }),
     ]);
     setPrayers(prayersRes.data || []);
     setFinancials(financialsRes.data || []);
     setProjects(projectsRes.data || []);
+    setRequests(requestsRes.data || []);
     setLoading(false);
   };
 
@@ -58,6 +66,38 @@ export default function Dashboard() {
       toast.success("Pedido de oração enviado!");
       setNewPrayer("");
       setPrayerCategory("Geral");
+      fetchData();
+    }
+  };
+
+  const REQUEST_TYPE_LABELS: Record<string, string> = {
+    salao_social: "Uso do Salão Social",
+    emprestimo_utensilios: "Empréstimo de Utensílios",
+    visita: "Visita",
+    outra: "Outra",
+  };
+
+  const STATUS_LABELS: Record<string, string> = {
+    pendente: "Pendente",
+    aprovada: "Aprovada",
+    rejeitada: "Rejeitada",
+  };
+
+  const handleRequestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!requestForm.description.trim() || !user) return;
+    setSubmittingRequest(true);
+    const { error } = await supabase.from("member_requests").insert({
+      user_id: user.id,
+      request_type: requestForm.request_type as any,
+      description: requestForm.description.trim(),
+    });
+    setSubmittingRequest(false);
+    if (error) {
+      toast.error("Erro ao enviar solicitação: " + error.message);
+    } else {
+      toast.success("Solicitação enviada com sucesso!");
+      setRequestForm({ request_type: "salao_social", description: "" });
       fetchData();
     }
   };
@@ -122,7 +162,7 @@ export default function Dashboard() {
         </div>
 
         <Tabs defaultValue="financeiro" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 max-w-md">
+          <TabsList className="grid w-full grid-cols-4 max-w-lg">
             <TabsTrigger value="financeiro" className="gap-1.5">
               <HandHeart className="h-4 w-4" /> Financeiro
             </TabsTrigger>
@@ -131,6 +171,9 @@ export default function Dashboard() {
             </TabsTrigger>
             <TabsTrigger value="projetos" className="gap-1.5">
               <FolderKanban className="h-4 w-4" /> Projetos
+            </TabsTrigger>
+            <TabsTrigger value="solicitacoes" className="gap-1.5">
+              <ClipboardList className="h-4 w-4" /> Solicitações
             </TabsTrigger>
           </TabsList>
 
@@ -274,6 +317,72 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="solicitacoes">
+            <div className="grid gap-6 lg:grid-cols-3">
+              <Card className="lg:col-span-1">
+                <CardHeader>
+                  <CardTitle className="font-sans text-lg">Nova Solicitação</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleRequestSubmit} className="space-y-3">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Tipo</label>
+                      <Select value={requestForm.request_type} onValueChange={(v) => setRequestForm({ ...requestForm, request_type: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="salao_social">Uso do Salão Social</SelectItem>
+                          <SelectItem value="emprestimo_utensilios">Empréstimo de Utensílios</SelectItem>
+                          <SelectItem value="visita">Visita</SelectItem>
+                          <SelectItem value="outra">Outra</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Textarea
+                      placeholder="Descreva sua solicitação com detalhes (data, horário, etc.)..."
+                      value={requestForm.description}
+                      onChange={(e) => setRequestForm({ ...requestForm, description: e.target.value })}
+                      rows={4}
+                      required
+                    />
+                    <Button type="submit" className="w-full gap-1.5" disabled={submittingRequest}>
+                      <Send className="h-4 w-4" /> {submittingRequest ? "Enviando..." : "Enviar Solicitação"}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+              <div className="lg:col-span-2 space-y-4">
+                <h3 className="font-sans font-bold text-lg">Minhas Solicitações</h3>
+                {requests.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhuma solicitação enviada ainda.</p>
+                ) : (
+                  requests.map((r) => (
+                    <Card key={r.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-xs">{REQUEST_TYPE_LABELS[r.request_type] || r.request_type}</Badge>
+                            <Badge variant={r.status === "aprovada" ? "default" : r.status === "rejeitada" ? "destructive" : "outline"} className="text-xs">
+                              {STATUS_LABELS[r.status] || r.status}
+                            </Badge>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(r.created_at).toLocaleDateString("pt-BR")}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{r.description}</p>
+                        {r.admin_notes && (
+                          <div className="mt-2 p-2 rounded bg-muted text-sm">
+                            <span className="font-semibold text-xs">Resposta:</span> {r.admin_notes}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </main>
