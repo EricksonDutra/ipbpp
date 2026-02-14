@@ -13,7 +13,7 @@ const Index = () => {
 
       {/* Hero */}
       <section className="relative h-[70vh] min-h-[500px] flex items-center justify-center overflow-hidden">
-        <img src={heroImage} alt="Igreja Presbiteriana do Brasil - Ponta Porã" className="absolute inset-0 w-full h-full object-cover" />
+        <img src={heroImage} alt="Igreja Presbiteriana do Brasil - Ponta Porã" className="absolute inset-0 w-full h-full object-cover object-top" />
         <div className="absolute inset-0 bg-hero-overlay" />
         <div className="relative z-10 text-center px-4 animate-fade-in">
           <p className="text-sm uppercase tracking-[0.3em] text-primary-foreground/80 mb-4 font-sans">
