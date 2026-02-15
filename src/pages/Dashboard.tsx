@@ -23,6 +23,7 @@ export default function Dashboard() {
   const { user, profile } = useAuth();
   const [newPrayer, setNewPrayer] = useState("");
   const [prayerCategory, setPrayerCategory] = useState("Geral");
+  const [prayerVisibility, setPrayerVisibility] = useState("public");
   const [prayers, setPrayers] = useState<any[]>([]);
   const [financials, setFinancials] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
@@ -58,7 +59,8 @@ export default function Dashboard() {
       author_name: profile?.full_name || "Membro",
       content: newPrayer,
       category: prayerCategory,
-    });
+      visibility: prayerVisibility,
+    } as any);
 
     if (error) {
       toast.error("Erro ao enviar pedido: " + error.message);
@@ -66,6 +68,7 @@ export default function Dashboard() {
       toast.success("Pedido de oração enviado!");
       setNewPrayer("");
       setPrayerCategory("Geral");
+      setPrayerVisibility("public");
       fetchData();
     }
   };
@@ -251,6 +254,14 @@ export default function Dashboard() {
                       <option value="Gratidão">Gratidão</option>
                       <option value="Trabalho">Trabalho</option>
                     </select>
+                    <select
+                      value={prayerVisibility}
+                      onChange={(e) => setPrayerVisibility(e.target.value)}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="public">Visível para todos os membros</option>
+                      <option value="admin">Visível apenas para o pastor/admin</option>
+                    </select>
                     <Textarea
                       placeholder="Escreva seu pedido de oração..."
                       value={newPrayer}
@@ -276,6 +287,9 @@ export default function Dashboard() {
                           <div className="flex items-center gap-2">
                             <span className="font-semibold text-sm">{p.author_name}</span>
                             <Badge variant="secondary" className="text-xs">{p.category}</Badge>
+                            {p.visibility === "admin" && (
+                              <Badge variant="outline" className="text-xs">Privado</Badge>
+                            )}
                           </div>
                           <span className="text-xs text-muted-foreground">
                             {new Date(p.created_at).toLocaleDateString("pt-BR")}
