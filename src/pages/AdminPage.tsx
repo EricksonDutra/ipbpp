@@ -13,7 +13,7 @@ import {
   UserPlus, Users, CheckCircle, XCircle,
   DollarSign, FolderKanban, Plus, Trash2, Pencil,
   Upload, FileText, X, HeartHandshake, ClipboardList,
-  Check,
+  Check, Megaphone,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -56,6 +56,10 @@ interface VisitorRow {
 interface RequestRow {
   id: string; user_id: string; request_type: string; description: string;
   status: string; admin_notes: string | null; reviewed_at: string | null; created_at: string;
+}
+
+interface NoticeRow {
+  id: string; title: string; content: string; category: string; active: boolean; created_at: string;
 }
 
 const REQUEST_TYPE_LABELS: Record<string, string> = {
@@ -110,6 +114,13 @@ export default function AdminPage() {
   const [memberRequests, setMemberRequests] = useState<RequestRow[]>([]);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
 
+  // Notices state
+  const [notices, setNotices] = useState<NoticeRow[]>([]);
+  const [showNoticeDialog, setShowNoticeDialog] = useState(false);
+  const [editingNotice, setEditingNotice] = useState<NoticeRow | null>(null);
+  const [noticeForm, setNoticeForm] = useState({ title: "", content: "", category: "public" as string });
+  const [submittingNotice, setSubmittingNotice] = useState(false);
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -117,18 +128,20 @@ export default function AdminPage() {
   }, []);
 
   const fetchAll = async () => {
-    const [membersRes, financialsRes, projectsRes, visitorsRes, requestsRes] = await Promise.all([
+    const [membersRes, financialsRes, projectsRes, visitorsRes, requestsRes, noticesRes] = await Promise.all([
       supabase.from("profiles").select("id, full_name, phone, active"),
       supabase.from("financial_reports").select("*").order("year", { ascending: false }).order("month", { ascending: true }),
       supabase.from("church_projects").select("*").order("created_at", { ascending: false }),
       supabase.from("visitors").select("*").order("visit_date", { ascending: false }),
       supabase.from("member_requests").select("*").order("created_at", { ascending: false }),
+      supabase.from("notices").select("*").order("created_at", { ascending: false }),
     ]);
     setMembers(membersRes.data || []);
     setFinancials(financialsRes.data || []);
     setProjects(projectsRes.data || []);
     setVisitors(visitorsRes.data as VisitorRow[] || []);
     setMemberRequests(requestsRes.data as RequestRow[] || []);
+    setNotices(noticesRes.data as NoticeRow[] || []);
     setLoading(false);
   };
 
@@ -328,6 +341,56 @@ export default function AdminPage() {
     }
   };
 
+  // ─── Notices ──────────────────────────────────────
+  const openNoticeDialog = (row?: NoticeRow) => {
+    if (row) {
+      setEditingNotice(row);
+      setNoticeForm({ title: row.title, content: row.content, category: row.category });
+    } else {
+      setEditingNotice(null);
+      setNoticeForm({ title: "", content: "", category: "public" });
+    }
+    setShowNoticeDialog(true);
+  };
+
+  const handleNoticeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!noticeForm.title.trim()) return;
+    setSubmittingNotice(true);
+    if (editingNotice) {
+      const { error } = await supabase.from("notices").update({
+        title: noticeForm.title,
+        content: noticeForm.content,
+        category: noticeForm.category as any,
+      }).eq("id", editingNotice.id);
+      if (error) toast.error("Erro ao atualizar: " + error.message);
+      else toast.success("Aviso atualizado!");
+    } else {
+      const { error } = await supabase.from("notices").insert({
+        title: noticeForm.title,
+        content: noticeForm.content,
+        category: noticeForm.category as any,
+      });
+      if (error) toast.error("Erro ao criar: " + error.message);
+      else toast.success("Aviso criado!");
+    }
+    setSubmittingNotice(false);
+    setShowNoticeDialog(false);
+    fetchAll();
+  };
+
+  const toggleNoticeActive = async (id: string, active: boolean) => {
+    const { error } = await supabase.from("notices").update({ active }).eq("id", id);
+    if (error) toast.error("Erro: " + error.message);
+    else { toast.success(active ? "Aviso ativado!" : "Aviso desativado!"); fetchAll(); }
+  };
+
+  const deleteNotice = async (id: string) => {
+    const { error } = await supabase.from("notices").delete().eq("id", id);
+    if (error) toast.error("Erro ao excluir: " + error.message);
+    else { toast.success("Aviso excluído!"); fetchAll(); }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
       <MemberHeader />
@@ -338,7 +401,7 @@ export default function AdminPage() {
         </div>
 
         <Tabs defaultValue="membros" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 max-w-3xl">
+          <TabsList className="grid w-full grid-cols-6 max-w-4xl">
             <TabsTrigger value="membros" className="gap-1.5">
               <Users className="h-4 w-4" /> Membros
             </TabsTrigger>
@@ -353,6 +416,9 @@ export default function AdminPage() {
             </TabsTrigger>
             <TabsTrigger value="solicitacoes" className="gap-1.5">
               <ClipboardList className="h-4 w-4" /> Solicitações
+            </TabsTrigger>
+            <TabsTrigger value="avisos" className="gap-1.5">
+              <Megaphone className="h-4 w-4" /> Avisos
             </TabsTrigger>
           </TabsList>
 
@@ -776,6 +842,84 @@ export default function AdminPage() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* ─── TAB: AVISOS ─── */}
+          <TabsContent value="avisos">
+            <div className="flex justify-end mb-4">
+              <Button onClick={() => openNoticeDialog()} className="gap-1.5">
+                <Plus className="h-4 w-4" /> Novo Aviso
+              </Button>
+            </div>
+
+            {notices.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Nenhum aviso cadastrado.</p>
+            ) : (
+              <div className="space-y-4">
+                {notices.map((n) => (
+                  <Card key={n.id} className={!n.active ? "opacity-50" : ""}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-sans font-bold text-sm">{n.title}</h3>
+                          <Badge variant={n.category === "public" ? "default" : "secondary"} className="text-xs">
+                            {n.category === "public" ? "Público" : "Membros"}
+                          </Badge>
+                          {!n.active && <Badge variant="outline" className="text-xs">Inativo</Badge>}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => toggleNoticeActive(n.id, !n.active)}>
+                            {n.active ? <XCircle className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openNoticeDialog(n)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => deleteNotice(n.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{n.content}</p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {new Date(n.created_at).toLocaleDateString("pt-BR")}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            <Dialog open={showNoticeDialog} onOpenChange={setShowNoticeDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{editingNotice ? "Editar Aviso" : "Novo Aviso"}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleNoticeSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Título *</label>
+                    <Input value={noticeForm.title} onChange={(e) => setNoticeForm({ ...noticeForm, title: e.target.value })} required />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Conteúdo</label>
+                    <Textarea value={noticeForm.content} onChange={(e) => setNoticeForm({ ...noticeForm, content: e.target.value })} rows={4} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Categoria</label>
+                    <Select value={noticeForm.category} onValueChange={(v) => setNoticeForm({ ...noticeForm, category: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="public">Público (aparece na home)</SelectItem>
+                        <SelectItem value="members">Membros (aparece no painel)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <DialogFooter>
+                    <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
+                    <Button type="submit" disabled={submittingNotice}>{submittingNotice ? "Salvando..." : "Salvar"}</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
         </Tabs>
 

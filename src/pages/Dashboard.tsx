@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import {
   DollarSign, TrendingUp, TrendingDown, HandHeart,
-  FolderKanban, Heart, Send, Users, ClipboardList
+  FolderKanban, Heart, Send, Users, ClipboardList, Megaphone
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -28,6 +28,7 @@ export default function Dashboard() {
   const [financials, setFinancials] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
+  const [memberNotices, setMemberNotices] = useState<any[]>([]);
   const [requestForm, setRequestForm] = useState({ request_type: "salao_social" as string, description: "" });
   const [submittingRequest, setSubmittingRequest] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -37,16 +38,18 @@ export default function Dashboard() {
   }, []);
 
   const fetchData = async () => {
-    const [prayersRes, financialsRes, projectsRes, requestsRes] = await Promise.all([
+    const [prayersRes, financialsRes, projectsRes, requestsRes, noticesRes] = await Promise.all([
       supabase.from("prayer_requests").select("*").order("created_at", { ascending: false }),
       supabase.from("financial_reports").select("*").order("year", { ascending: true }).order("month", { ascending: true }),
       supabase.from("church_projects").select("*").order("created_at", { ascending: false }),
       supabase.from("member_requests").select("*").order("created_at", { ascending: false }),
+      supabase.from("notices").select("*").eq("category", "members").eq("active", true).order("created_at", { ascending: false }),
     ]);
     setPrayers(prayersRes.data || []);
     setFinancials(financialsRes.data || []);
     setProjects(projectsRes.data || []);
     setRequests(requestsRes.data || []);
+    setMemberNotices(noticesRes.data || []);
     setLoading(false);
   };
 
@@ -143,6 +146,28 @@ export default function Dashboard() {
           </h1>
           <p className="text-sm text-muted-foreground">Acompanhe as informações da nossa igreja.</p>
         </div>
+
+        {/* Avisos para Membros */}
+        {memberNotices.length > 0 && (
+          <div className="mb-8 space-y-3">
+            <h2 className="text-lg font-sans font-bold flex items-center gap-2">
+              <Megaphone className="h-5 w-5 text-primary" /> Avisos
+            </h2>
+            <div className="grid gap-3 md:grid-cols-2">
+              {memberNotices.map((n) => (
+                <Card key={n.id} className="border-primary/30 bg-primary/5">
+                  <CardContent className="p-4">
+                    <h3 className="font-sans font-bold text-sm">{n.title}</h3>
+                    <p className="text-sm text-muted-foreground mt-1">{n.content}</p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {new Date(n.created_at).toLocaleDateString("pt-BR")}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid gap-4 md:grid-cols-3 mb-8">
           {[
