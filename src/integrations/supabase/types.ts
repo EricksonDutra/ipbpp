@@ -110,6 +110,36 @@ export type Database = {
         }
         Relationships: []
       }
+      notices: {
+        Row: {
+          active: boolean
+          category: Database["public"]["Enums"]["notice_category"]
+          content: string
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: Database["public"]["Enums"]["notice_category"]
+          content: string
+          created_at?: string
+          id?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: Database["public"]["Enums"]["notice_category"]
+          content?: string
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       prayer_requests: {
         Row: {
           author_name: string
@@ -243,6 +273,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "member"
+      notice_category: "public" | "members"
       request_status: "pendente" | "aprovada" | "rejeitada"
       request_type:
         | "salao_social"
@@ -377,6 +408,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "member"],
+      notice_category: ["public", "members"],
       request_status: ["pendente", "aprovada", "rejeitada"],
       request_type: [
         "salao_social",

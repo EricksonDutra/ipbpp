@@ -1,12 +1,26 @@
+import { useEffect, useState } from "react";
 import heroImage from "@/assets/hero-church.jpg";
 import { PublicHeader } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { BookOpen, Clock, Heart, MapPin, Phone, Users, Church } from "lucide-react";
+import { BookOpen, Clock, Heart, MapPin, Phone, Users, Megaphone } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
+  const [notices, setNotices] = useState<any[]>([]);
+
+  useEffect(() => {
+    supabase
+      .from("notices")
+      .select("*")
+      .eq("category", "public")
+      .eq("active", true)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => setNotices(data || []));
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col">
       <PublicHeader />
@@ -39,6 +53,30 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Avisos Públicos */}
+      {notices.length > 0 && (
+        <section className="py-12 bg-primary/5">
+          <div className="container">
+            <h2 className="text-2xl font-serif font-bold text-center mb-6 flex items-center justify-center gap-2">
+              <Megaphone className="h-6 w-6 text-primary" /> Avisos
+            </h2>
+            <div className="grid gap-4 md:grid-cols-2 max-w-3xl mx-auto">
+              {notices.map((n) => (
+                <Card key={n.id} className="border-primary/20">
+                  <CardContent className="p-5">
+                    <h3 className="font-serif font-bold mb-1">{n.title}</h3>
+                    <p className="text-sm text-muted-foreground">{n.content}</p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {new Date(n.created_at).toLocaleDateString("pt-BR")}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Sobre */}
       <section id="sobre" className="py-20 bg-section-warm">
