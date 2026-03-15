@@ -143,15 +143,23 @@ export default function AdminPage() {
   }, []);
 
   const fetchAll = async () => {
-    const [membersRes, financialsRes, projectsRes, visitorsRes, requestsRes, noticesRes] = await Promise.all([
+    const [membersRes, financialsRes, projectsRes, visitorsRes, requestsRes, noticesRes, rolesRes] = await Promise.all([
       supabase.from("profiles").select("id, full_name, phone, active"),
       supabase.from("financial_reports").select("*").order("year", { ascending: false }).order("month", { ascending: true }),
       supabase.from("church_projects").select("*").order("created_at", { ascending: false }),
       supabase.from("visitors").select("*").order("visit_date", { ascending: false }),
       supabase.from("member_requests").select("*").order("created_at", { ascending: false }),
       supabase.from("notices").select("*").order("created_at", { ascending: false }),
+      supabase.from("user_roles").select("user_id, role"),
     ]);
-    setMembers(membersRes.data || []);
+
+    const rolesMap: Record<string, string[]> = {};
+    (rolesRes.data || []).forEach((r: any) => {
+      if (!rolesMap[r.user_id]) rolesMap[r.user_id] = [];
+      rolesMap[r.user_id].push(r.role);
+    });
+
+    setMembers((membersRes.data || []).map((m: any) => ({ ...m, roles: rolesMap[m.id] || [] })));
     setFinancials(financialsRes.data || []);
     setProjects(projectsRes.data || []);
     setVisitors(visitorsRes.data as VisitorRow[] || []);
