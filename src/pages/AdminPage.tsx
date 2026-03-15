@@ -503,6 +503,7 @@ export default function AdminPage() {
                         <tr className="border-b">
                           <th className="text-left py-3 font-semibold">Nome</th>
                           <th className="text-left py-3 font-semibold">Telefone</th>
+                          <th className="text-left py-3 font-semibold">Funções</th>
                           <th className="text-center py-3 font-semibold">Status</th>
                           <th className="text-right py-3 font-semibold">Ações</th>
                         </tr>
@@ -512,10 +513,23 @@ export default function AdminPage() {
                           <tr key={m.id} className="border-b last:border-0 hover:bg-muted/50">
                             <td className="py-3 font-medium">{m.full_name}</td>
                             <td className="py-3 text-muted-foreground">{m.phone || "—"}</td>
+                            <td className="py-3">
+                              <div className="flex flex-wrap gap-1">
+                                {m.roles.filter(r => r !== "member").map(r => (
+                                  <Badge key={r} variant="secondary" className="text-xs">{ROLE_LABELS[r] || r}</Badge>
+                                ))}
+                                {m.roles.filter(r => r !== "member").length === 0 && (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
+                              </div>
+                            </td>
                             <td className="py-3 text-center">
                               <Badge variant={m.active ? "default" : "destructive"}>{m.active ? "Ativo" : "Inativo"}</Badge>
                             </td>
-                            <td className="py-3 text-right">
+                            <td className="py-3 text-right space-x-1">
+                              <Button size="sm" variant="outline" onClick={() => { setRoleTarget(m); setShowRoleDialog(true); }} className="gap-1">
+                                <Pencil className="h-3.5 w-3.5" /> Funções
+                              </Button>
                               <Button size="sm" variant={m.active ? "outline" : "default"} onClick={() => toggleActive(m.id, !m.active)} className="gap-1">
                                 {m.active ? (<><XCircle className="h-3.5 w-3.5" /> Desativar</>) : (<><CheckCircle className="h-3.5 w-3.5" /> Ativar</>)}
                               </Button>
@@ -528,6 +542,36 @@ export default function AdminPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Role Management Dialog */}
+            <Dialog open={showRoleDialog} onOpenChange={setShowRoleDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Funções de {roleTarget?.full_name}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3">
+                  {ASSIGNABLE_ROLES.map((role) => {
+                    const hasRole = roleTarget?.roles.includes(role) || false;
+                    return (
+                      <div key={role} className="flex items-center justify-between py-2 px-3 rounded-md border">
+                        <span className="font-medium text-sm">{ROLE_LABELS[role]}</span>
+                        <Button
+                          size="sm"
+                          variant={hasRole ? "destructive" : "default"}
+                          onClick={() => roleTarget && toggleRole(roleTarget.id, role, !hasRole)}
+                          className="gap-1"
+                        >
+                          {hasRole ? (<><XCircle className="h-3.5 w-3.5" /> Remover</>) : (<><CheckCircle className="h-3.5 w-3.5" /> Adicionar</>)}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild><Button variant="outline">Fechar</Button></DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* ─── TAB: FINANCEIRO ─── */}
