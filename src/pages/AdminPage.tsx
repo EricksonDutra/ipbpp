@@ -28,7 +28,20 @@ interface MemberRow {
   full_name: string;
   phone: string | null;
   active: boolean;
+  roles: string[];
 }
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Administrador",
+  member: "Membro",
+  pastor: "Pastor",
+  presbitero: "Presbítero",
+  diacono: "Diácono",
+  presidente_sociedade: "Presidente de Sociedade",
+  gestor_midias: "Gestor de Mídias",
+};
+
+const ASSIGNABLE_ROLES = ["pastor", "presbitero", "diacono", "presidente_sociedade", "gestor_midias"] as const;
 
 interface FinancialRow {
   id: string;
@@ -90,6 +103,8 @@ export default function AdminPage() {
   const [showMemberForm, setShowMemberForm] = useState(false);
   const [memberForm, setMemberForm] = useState({ email: "", password: "", full_name: "", phone: "" });
   const [submittingMember, setSubmittingMember] = useState(false);
+  const [showRoleDialog, setShowRoleDialog] = useState(false);
+  const [roleTarget, setRoleTarget] = useState<MemberRow | null>(null);
 
   // Financial state
   const [financials, setFinancials] = useState<FinancialRow[]>([]);
@@ -128,15 +143,26 @@ export default function AdminPage() {
   }, []);
 
   const fetchAll = async () => {
-    const [membersRes, financialsRes, projectsRes, visitorsRes, requestsRes, noticesRes] = await Promise.all([
+    const [membersRes, financialsRes, projectsRes, visitorsRes, requestsRes, noticesRes, rolesRes] = await Promise.all([
       supabase.from("profiles").select("id, full_name, phone, active"),
       supabase.from("financial_reports").select("*").order("year", { ascending: false }).order("month", { ascending: true }),
       supabase.from("church_projects").select("*").order("created_at", { ascending: false }),
       supabase.from("visitors").select("*").order("visit_date", { ascending: false }),
       supabase.from("member_requests").select("*").order("created_at", { ascending: false }),
       supabase.from("notices").select("*").order("created_at", { ascending: false }),
+      supabase.from("user_roles").select("user_id, role"),
     ]);
-    setMembers(membersRes.data || []);
+
+    const rolesMap: Record<string, string[]> = {};
+    (rolesRes.data || []).forEach((r: any) => {
+      if (!rolesMap[r.user_id]) rolesMap[r.user_id] = [];
+      rolesMap[r.user_id].push(r.role);
+    });
+
+    const mappedMembers = (membersRes.data || []).map((m: any) => ({ ...m, roles: rolesMap[m.id] || [] }));
+    setMembers(mappedMembers);
+    // Keep role dialog in sync
+    setRoleTarget(prev => prev ? mappedMembers.find((m: MemberRow) => m.id === prev.id) || null : null);
     setFinancials(financialsRes.data || []);
     setProjects(projectsRes.data || []);
     setVisitors(visitorsRes.data as VisitorRow[] || []);
@@ -171,8 +197,20 @@ export default function AdminPage() {
       fetchAll();
     }
   };
+  const toggleRole = async (userId: string, role: string, add: boolean) => {
+    if (add) {
+      const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: role as any });
+      if (error) { toast.error("Erro ao adicionar função"); return; }
+      toast.success(`Função "${ROLE_LABELS[role]}" adicionada!`);
+    } else {
+      const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", role as any);
+      if (error) { toast.error("Erro ao remover função"); return; }
+      toast.success(`Função "${ROLE_LABELS[role]}" removida!`);
+    }
+    fetchAll();
+  };
 
-  // ─── Financial Reports ─────────────────────────────
+
   const openFinancialDialog = (row?: FinancialRow) => {
     if (row) {
       setEditingFinancial(row);
@@ -468,6 +506,7 @@ export default function AdminPage() {
                         <tr className="border-b">
                           <th className="text-left py-3 font-semibold">Nome</th>
                           <th className="text-left py-3 font-semibold">Telefone</th>
+                          <th className="text-left py-3 font-semibold">Funções</th>
                           <th className="text-center py-3 font-semibold">Status</th>
                           <th className="text-right py-3 font-semibold">Ações</th>
                         </tr>
@@ -477,10 +516,23 @@ export default function AdminPage() {
                           <tr key={m.id} className="border-b last:border-0 hover:bg-muted/50">
                             <td className="py-3 font-medium">{m.full_name}</td>
                             <td className="py-3 text-muted-foreground">{m.phone || "—"}</td>
+                            <td className="py-3">
+                              <div className="flex flex-wrap gap-1">
+                                {m.roles.filter(r => r !== "member").map(r => (
+                                  <Badge key={r} variant="secondary" className="text-xs">{ROLE_LABELS[r] || r}</Badge>
+                                ))}
+                                {m.roles.filter(r => r !== "member").length === 0 && (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
+                              </div>
+                            </td>
                             <td className="py-3 text-center">
                               <Badge variant={m.active ? "default" : "destructive"}>{m.active ? "Ativo" : "Inativo"}</Badge>
                             </td>
-                            <td className="py-3 text-right">
+                            <td className="py-3 text-right space-x-1">
+                              <Button size="sm" variant="outline" onClick={() => { setRoleTarget(m); setShowRoleDialog(true); }} className="gap-1">
+                                <Pencil className="h-3.5 w-3.5" /> Funções
+                              </Button>
                               <Button size="sm" variant={m.active ? "outline" : "default"} onClick={() => toggleActive(m.id, !m.active)} className="gap-1">
                                 {m.active ? (<><XCircle className="h-3.5 w-3.5" /> Desativar</>) : (<><CheckCircle className="h-3.5 w-3.5" /> Ativar</>)}
                               </Button>
@@ -493,6 +545,36 @@ export default function AdminPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Role Management Dialog */}
+            <Dialog open={showRoleDialog} onOpenChange={setShowRoleDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Funções de {roleTarget?.full_name}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3">
+                  {ASSIGNABLE_ROLES.map((role) => {
+                    const hasRole = roleTarget?.roles.includes(role) || false;
+                    return (
+                      <div key={role} className="flex items-center justify-between py-2 px-3 rounded-md border">
+                        <span className="font-medium text-sm">{ROLE_LABELS[role]}</span>
+                        <Button
+                          size="sm"
+                          variant={hasRole ? "destructive" : "default"}
+                          onClick={() => roleTarget && toggleRole(roleTarget.id, role, !hasRole)}
+                          className="gap-1"
+                        >
+                          {hasRole ? (<><XCircle className="h-3.5 w-3.5" /> Remover</>) : (<><CheckCircle className="h-3.5 w-3.5" /> Adicionar</>)}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild><Button variant="outline">Fechar</Button></DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* ─── TAB: FINANCEIRO ─── */}
