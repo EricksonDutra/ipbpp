@@ -159,7 +159,10 @@ export default function AdminPage() {
       rolesMap[r.user_id].push(r.role);
     });
 
-    setMembers((membersRes.data || []).map((m: any) => ({ ...m, roles: rolesMap[m.id] || [] })));
+    const mappedMembers = (membersRes.data || []).map((m: any) => ({ ...m, roles: rolesMap[m.id] || [] }));
+    setMembers(mappedMembers);
+    // Keep role dialog in sync
+    setRoleTarget(prev => prev ? mappedMembers.find((m: MemberRow) => m.id === prev.id) || null : null);
     setFinancials(financialsRes.data || []);
     setProjects(projectsRes.data || []);
     setVisitors(visitorsRes.data as VisitorRow[] || []);
