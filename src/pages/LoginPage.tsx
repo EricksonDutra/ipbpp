@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { PublicHeader } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,9 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [sendingReset, setSendingReset] = useState(false);
   const { signIn, user } = useAuth();
   const navigate = useNavigate();
 
@@ -35,6 +39,23 @@ export default function LoginPage() {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) return;
+    setSendingReset(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setSendingReset(false);
+    if (error) {
+      toast.error("Erro ao enviar email de redefinição.");
+    } else {
+      toast.success("Se o email estiver cadastrado, você receberá um link para redefinir sua senha.");
+      setForgotMode(false);
+      setForgotEmail("");
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <PublicHeader />
@@ -44,39 +65,80 @@ export default function LoginPage() {
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
               <Church className="h-8 w-8 text-primary" />
             </div>
-            <CardTitle className="font-sans text-2xl">Área do Membro</CardTitle>
+            <CardTitle className="font-sans text-2xl">
+              {forgotMode ? "Recuperar Senha" : "Área do Membro"}
+            </CardTitle>
             <CardDescription>
-              Faça login com seu email e senha fornecidos pela secretaria.
+              {forgotMode
+                ? "Informe seu email para receber o link de redefinição."
+                : "Faça login com seu email e senha fornecidos pela secretaria."}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="password"
-                  placeholder="Senha"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Entrando..." : "Entrar"}
-              </Button>
-            </form>
+            {forgotMode ? (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="email"
+                    placeholder="Seu email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={sendingReset}>
+                  {sendingReset ? "Enviando..." : "Enviar Link de Redefinição"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => { setForgotMode(false); setForgotEmail(""); }}
+                >
+                  Voltar ao Login
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="password"
+                    placeholder="Senha"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Entrando..." : "Entrar"}
+                </Button>
+                <div className="text-center">
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="text-sm text-muted-foreground"
+                    onClick={() => setForgotMode(true)}
+                  >
+                    Esqueci minha senha
+                  </Button>
+                </div>
+              </form>
+            )}
           </CardContent>
         </Card>
       </main>
