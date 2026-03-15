@@ -28,7 +28,20 @@ interface MemberRow {
   full_name: string;
   phone: string | null;
   active: boolean;
+  roles: string[];
 }
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Administrador",
+  member: "Membro",
+  pastor: "Pastor",
+  presbitero: "Presbítero",
+  diacono: "Diácono",
+  presidente_sociedade: "Presidente de Sociedade",
+  gestor_midias: "Gestor de Mídias",
+};
+
+const ASSIGNABLE_ROLES = ["pastor", "presbitero", "diacono", "presidente_sociedade", "gestor_midias"] as const;
 
 interface FinancialRow {
   id: string;
