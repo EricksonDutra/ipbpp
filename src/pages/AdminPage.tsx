@@ -102,7 +102,10 @@ export default function AdminPage() {
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [showMemberForm, setShowMemberForm] = useState(false);
   const [memberForm, setMemberForm] = useState({ email: "", password: "", full_name: "", phone: "" });
-  const [submittingMember, setSubmittingMember] = useState(false);
+  // Role management
+  const [showRoleDialog, setShowRoleDialog] = useState(false);
+  const [roleTarget, setRoleTarget] = useState<MemberRow | null>(null);
+
 
   // Financial state
   const [financials, setFinancials] = useState<FinancialRow[]>([]);
