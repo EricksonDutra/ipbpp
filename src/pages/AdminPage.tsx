@@ -194,8 +194,20 @@ export default function AdminPage() {
       fetchAll();
     }
   };
+  const toggleRole = async (userId: string, role: string, add: boolean) => {
+    if (add) {
+      const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: role as any });
+      if (error) { toast.error("Erro ao adicionar função"); return; }
+      toast.success(`Função "${ROLE_LABELS[role]}" adicionada!`);
+    } else {
+      const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", role as any);
+      if (error) { toast.error("Erro ao remover função"); return; }
+      toast.success(`Função "${ROLE_LABELS[role]}" removida!`);
+    }
+    fetchAll();
+  };
 
-  // ─── Financial Reports ─────────────────────────────
+
   const openFinancialDialog = (row?: FinancialRow) => {
     if (row) {
       setEditingFinancial(row);
