@@ -296,6 +296,14 @@ export function PastoralTab() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="h-6 text-xs"
+                        onClick={() => handleStartEdit(record)}
+                      >
+                        <Pencil className="h-3 w-3 mr-1" /> Editar
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="h-6 text-xs text-destructive hover:text-destructive"
                         onClick={() => handleDeleteRecord(record.id)}
                       >
