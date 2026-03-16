@@ -252,10 +252,10 @@ export function PastoralTab() {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button type="submit" className="gap-1.5">
-                    Salvar Registro
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => setShowNewRecord(false)}>
+                    <Button type="submit" className="gap-1.5">
+                    {editingRecord ? "Atualizar" : "Salvar Registro"}
+                    </Button>
+                  <Button type="button" variant="outline" onClick={resetForm}>
                     Cancelar
                   </Button>
                 </div>
