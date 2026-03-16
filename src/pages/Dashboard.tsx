@@ -429,6 +429,11 @@ export default function Dashboard() {
               </div>
             </div>
           </TabsContent>
+          {(isAdmin || isPastor) && (
+            <TabsContent value="pastoral">
+              <PastoralTab />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
     </div>
