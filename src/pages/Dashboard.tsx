@@ -15,12 +15,13 @@ import {
 } from "@/components/ui/select";
 import {
   DollarSign, TrendingUp, TrendingDown, HandHeart,
-  FolderKanban, Heart, Send, Users, ClipboardList, Megaphone
+  FolderKanban, Heart, Send, Users, ClipboardList, Megaphone, BookHeart
 } from "lucide-react";
+import { PastoralTab } from "@/components/dashboard/PastoralTab";
 import { toast } from "sonner";
 
 export default function Dashboard() {
-  const { user, profile } = useAuth();
+  const { user, profile, isAdmin, isPastor } = useAuth();
   const [newPrayer, setNewPrayer] = useState("");
   const [prayerCategory, setPrayerCategory] = useState("Geral");
   const [prayerVisibility, setPrayerVisibility] = useState("public");
@@ -190,7 +191,7 @@ export default function Dashboard() {
         </div>
 
         <Tabs defaultValue="financeiro" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 max-w-lg">
+          <TabsList className={`grid w-full ${(isAdmin || isPastor) ? 'grid-cols-5' : 'grid-cols-4'} max-w-2xl`}>
             <TabsTrigger value="financeiro" className="gap-1.5">
               <HandHeart className="h-4 w-4" /> Financeiro
             </TabsTrigger>
@@ -203,6 +204,11 @@ export default function Dashboard() {
             <TabsTrigger value="solicitacoes" className="gap-1.5">
               <ClipboardList className="h-4 w-4" /> Solicitações
             </TabsTrigger>
+            {(isAdmin || isPastor) && (
+              <TabsTrigger value="pastoral" className="gap-1.5">
+                <BookHeart className="h-4 w-4" /> Pastoral
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="financeiro">
@@ -423,6 +429,11 @@ export default function Dashboard() {
               </div>
             </div>
           </TabsContent>
+          {(isAdmin || isPastor) && (
+            <TabsContent value="pastoral">
+              <PastoralTab />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
     </div>

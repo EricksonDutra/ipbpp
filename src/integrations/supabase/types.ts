@@ -140,6 +140,42 @@ export type Database = {
         }
         Relationships: []
       }
+      pastoral_records: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          member_id: string
+          pastor_id: string
+          record_date: string
+          record_type: Database["public"]["Enums"]["pastoral_record_type"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          member_id: string
+          pastor_id: string
+          record_date?: string
+          record_type: Database["public"]["Enums"]["pastoral_record_type"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          member_id?: string
+          pastor_id?: string
+          record_date?: string
+          record_type?: Database["public"]["Enums"]["pastoral_record_type"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       prayer_requests: {
         Row: {
           author_name: string
@@ -281,6 +317,7 @@ export type Database = {
         | "presidente_sociedade"
         | "gestor_midias"
       notice_category: "public" | "members"
+      pastoral_record_type: "visita" | "aconselhamento" | "anotacao"
       request_status: "pendente" | "aprovada" | "rejeitada"
       request_type:
         | "salao_social"
@@ -424,6 +461,7 @@ export const Constants = {
         "gestor_midias",
       ],
       notice_category: ["public", "members"],
+      pastoral_record_type: ["visita", "aconselhamento", "anotacao"],
       request_status: ["pendente", "aprovada", "rejeitada"],
       request_type: [
         "salao_social",
