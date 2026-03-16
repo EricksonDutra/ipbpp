@@ -38,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (rolesRes.data) {
       setIsAdmin(rolesRes.data.some((r) => r.role === "admin"));
+      setIsPastor(rolesRes.data.some((r) => r.role === "pastor"));
     }
   };
 
