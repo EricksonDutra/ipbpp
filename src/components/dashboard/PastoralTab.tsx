@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { UserRound, Plus, BookOpen, Calendar, Search, ArrowLeft } from "lucide-react";
+import { UserRound, Plus, BookOpen, Calendar, Search, ArrowLeft, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 interface Member {
@@ -50,6 +50,7 @@ export function PastoralTab() {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [showNewRecord, setShowNewRecord] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<PastoralRecord | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [newRecord, setNewRecord] = useState({
@@ -81,32 +82,65 @@ export function PastoralTab() {
     m.full_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleStartEdit = (record: PastoralRecord) => {
+    setEditingRecord(record);
+    setNewRecord({
+      record_type: record.record_type,
+      title: record.title,
+      content: record.content || "",
+      record_date: record.record_date,
+    });
+    setShowNewRecord(true);
+  };
+
   const handleSubmitRecord = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedMember || !user || !newRecord.title.trim()) return;
 
-    const { error } = await supabase.from("pastoral_records").insert({
-      pastor_id: user.id,
-      member_id: selectedMember.id,
-      record_type: newRecord.record_type as any,
-      title: newRecord.title.trim(),
-      content: newRecord.content.trim() || null,
-      record_date: newRecord.record_date,
-    });
+    if (editingRecord) {
+      const { error } = await supabase.from("pastoral_records").update({
+        record_type: newRecord.record_type as any,
+        title: newRecord.title.trim(),
+        content: newRecord.content.trim() || null,
+        record_date: newRecord.record_date,
+      }).eq("id", editingRecord.id);
 
-    if (error) {
-      toast.error("Erro ao registrar: " + error.message);
+      if (error) {
+        toast.error("Erro ao atualizar: " + error.message);
+      } else {
+        toast.success("Registro atualizado!");
+        resetForm();
+        fetchData();
+      }
     } else {
-      toast.success("Registro pastoral salvo!");
-      setNewRecord({
-        record_type: "visita",
-        title: "",
-        content: "",
-        record_date: new Date().toISOString().split("T")[0],
+      const { error } = await supabase.from("pastoral_records").insert({
+        pastor_id: user.id,
+        member_id: selectedMember.id,
+        record_type: newRecord.record_type as any,
+        title: newRecord.title.trim(),
+        content: newRecord.content.trim() || null,
+        record_date: newRecord.record_date,
       });
-      setShowNewRecord(false);
-      fetchData();
+
+      if (error) {
+        toast.error("Erro ao registrar: " + error.message);
+      } else {
+        toast.success("Registro pastoral salvo!");
+        resetForm();
+        fetchData();
+      }
     }
+  };
+
+  const resetForm = () => {
+    setNewRecord({
+      record_type: "visita",
+      title: "",
+      content: "",
+      record_date: new Date().toISOString().split("T")[0],
+    });
+    setShowNewRecord(false);
+    setEditingRecord(null);
   };
 
   const handleDeleteRecord = async (id: string) => {
@@ -168,7 +202,9 @@ export function PastoralTab() {
         {showNewRecord && (
           <Card className="border-primary/30">
             <CardHeader>
-              <CardTitle className="font-sans text-lg">Novo Registro Pastoral</CardTitle>
+              <CardTitle className="font-sans text-lg">
+                {editingRecord ? "Editar Registro Pastoral" : "Novo Registro Pastoral"}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmitRecord} className="space-y-4">
@@ -216,10 +252,10 @@ export function PastoralTab() {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button type="submit" className="gap-1.5">
-                    Salvar Registro
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => setShowNewRecord(false)}>
+                    <Button type="submit" className="gap-1.5">
+                    {editingRecord ? "Atualizar" : "Salvar Registro"}
+                    </Button>
+                  <Button type="button" variant="outline" onClick={resetForm}>
                     Cancelar
                   </Button>
                 </div>
@@ -257,6 +293,14 @@ export function PastoralTab() {
                         <Calendar className="h-3 w-3" />
                         {new Date(record.record_date).toLocaleDateString("pt-BR")}
                       </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs"
+                        onClick={() => handleStartEdit(record)}
+                      >
+                        <Pencil className="h-3 w-3 mr-1" /> Editar
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"
