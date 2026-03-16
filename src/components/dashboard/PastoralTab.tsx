@@ -82,32 +82,65 @@ export function PastoralTab() {
     m.full_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleStartEdit = (record: PastoralRecord) => {
+    setEditingRecord(record);
+    setNewRecord({
+      record_type: record.record_type,
+      title: record.title,
+      content: record.content || "",
+      record_date: record.record_date,
+    });
+    setShowNewRecord(true);
+  };
+
   const handleSubmitRecord = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedMember || !user || !newRecord.title.trim()) return;
 
-    const { error } = await supabase.from("pastoral_records").insert({
-      pastor_id: user.id,
-      member_id: selectedMember.id,
-      record_type: newRecord.record_type as any,
-      title: newRecord.title.trim(),
-      content: newRecord.content.trim() || null,
-      record_date: newRecord.record_date,
-    });
+    if (editingRecord) {
+      const { error } = await supabase.from("pastoral_records").update({
+        record_type: newRecord.record_type as any,
+        title: newRecord.title.trim(),
+        content: newRecord.content.trim() || null,
+        record_date: newRecord.record_date,
+      }).eq("id", editingRecord.id);
 
-    if (error) {
-      toast.error("Erro ao registrar: " + error.message);
+      if (error) {
+        toast.error("Erro ao atualizar: " + error.message);
+      } else {
+        toast.success("Registro atualizado!");
+        resetForm();
+        fetchData();
+      }
     } else {
-      toast.success("Registro pastoral salvo!");
-      setNewRecord({
-        record_type: "visita",
-        title: "",
-        content: "",
-        record_date: new Date().toISOString().split("T")[0],
+      const { error } = await supabase.from("pastoral_records").insert({
+        pastor_id: user.id,
+        member_id: selectedMember.id,
+        record_type: newRecord.record_type as any,
+        title: newRecord.title.trim(),
+        content: newRecord.content.trim() || null,
+        record_date: newRecord.record_date,
       });
-      setShowNewRecord(false);
-      fetchData();
+
+      if (error) {
+        toast.error("Erro ao registrar: " + error.message);
+      } else {
+        toast.success("Registro pastoral salvo!");
+        resetForm();
+        fetchData();
+      }
     }
+  };
+
+  const resetForm = () => {
+    setNewRecord({
+      record_type: "visita",
+      title: "",
+      content: "",
+      record_date: new Date().toISOString().split("T")[0],
+    });
+    setShowNewRecord(false);
+    setEditingRecord(null);
   };
 
   const handleDeleteRecord = async (id: string) => {
