@@ -202,7 +202,9 @@ export function PastoralTab() {
         {showNewRecord && (
           <Card className="border-primary/30">
             <CardHeader>
-              <CardTitle className="font-sans text-lg">Novo Registro Pastoral</CardTitle>
+              <CardTitle className="font-sans text-lg">
+                {editingRecord ? "Editar Registro Pastoral" : "Novo Registro Pastoral"}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmitRecord} className="space-y-4">
