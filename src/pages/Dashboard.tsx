@@ -21,7 +21,7 @@ import { PastoralTab } from "@/components/dashboard/PastoralTab";
 import { toast } from "sonner";
 
 export default function Dashboard() {
-  const { user, profile } = useAuth();
+  const { user, profile, isAdmin, isPastor } = useAuth();
   const [newPrayer, setNewPrayer] = useState("");
   const [prayerCategory, setPrayerCategory] = useState("Geral");
   const [prayerVisibility, setPrayerVisibility] = useState("public");
