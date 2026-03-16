@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   isAdmin: boolean;
+  isPastor: boolean;
   isActive: boolean;
   profile: { full_name: string; phone: string | null; active: boolean } | null;
   loading: boolean;
