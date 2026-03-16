@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { UserRound, Plus, BookOpen, Calendar, Search, ArrowLeft } from "lucide-react";
+import { UserRound, Plus, BookOpen, Calendar, Search, ArrowLeft, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 interface Member {
