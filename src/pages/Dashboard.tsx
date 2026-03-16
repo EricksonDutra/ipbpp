@@ -15,8 +15,9 @@ import {
 } from "@/components/ui/select";
 import {
   DollarSign, TrendingUp, TrendingDown, HandHeart,
-  FolderKanban, Heart, Send, Users, ClipboardList, Megaphone
+  FolderKanban, Heart, Send, Users, ClipboardList, Megaphone, BookHeart
 } from "lucide-react";
+import { PastoralTab } from "@/components/dashboard/PastoralTab";
 import { toast } from "sonner";
 
 export default function Dashboard() {
