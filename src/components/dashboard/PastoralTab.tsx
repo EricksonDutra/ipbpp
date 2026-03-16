@@ -50,6 +50,7 @@ export function PastoralTab() {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [showNewRecord, setShowNewRecord] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<PastoralRecord | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [newRecord, setNewRecord] = useState({
