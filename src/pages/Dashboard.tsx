@@ -433,6 +433,9 @@ export default function Dashboard() {
               </div>
             </div>
           </TabsContent>
+          <TabsContent value="escalas">
+            <EscalasTab />
+          </TabsContent>
           {(isAdmin || isPastor) && (
             <TabsContent value="pastoral">
               <PastoralTab />
