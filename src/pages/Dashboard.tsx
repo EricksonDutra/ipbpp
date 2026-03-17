@@ -18,6 +18,7 @@ import {
   FolderKanban, Heart, Send, Users, ClipboardList, Megaphone, BookHeart, CalendarDays
 } from "lucide-react";
 import { PastoralTab } from "@/components/dashboard/PastoralTab";
+import { EscalasTab } from "@/components/dashboard/EscalasTab";
 import { toast } from "sonner";
 
 export default function Dashboard() {
