@@ -41,15 +41,35 @@ const FUNCAO_COLORS: Record<string, string> = {
   pregacao: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
 };
 
+// Map roles to the funcoes they can manage
+const ROLE_FUNCAO_MAP: Record<string, string[]> = {
+  admin: Object.keys(FUNCAO_LABELS),
+  gestor_midias: ["midias"],
+  pastor: ["ebd", "liturgia", "pregacao"],
+  diacono: ["diaconia"],
+  presidente_sociedade: ["recepcao"],
+};
+
+function getManageableFuncoes(roles: string[]): string[] {
+  const funcoes = new Set<string>();
+  for (const role of roles) {
+    const allowed = ROLE_FUNCAO_MAP[role];
+    if (allowed) allowed.forEach((f) => funcoes.add(f));
+  }
+  return Array.from(funcoes);
+}
+
 export function EscalasTab() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, roles } = useAuth();
+  const manageableFuncoes = getManageableFuncoes(roles);
+  const canManage = manageableFuncoes.length > 0;
   const [escalas, setEscalas] = useState<Escala[]>([]);
   const [members, setMembers] = useState<{ id: string; full_name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
-    funcao: "recepcao",
+    funcao: manageableFuncoes[0] || "recepcao",
     data: "",
     horario: "09:00",
     responsavel_id: "",
@@ -58,8 +78,8 @@ export function EscalasTab() {
 
   useEffect(() => {
     fetchEscalas();
-    if (isAdmin) fetchMembers();
-  }, [isAdmin]);
+    if (canManage) fetchMembers();
+  }, [canManage]);
 
   const fetchEscalas = async () => {
     // Fetch escalas with responsavel profile name
