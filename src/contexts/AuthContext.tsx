@@ -8,6 +8,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isPastor: boolean;
   isActive: boolean;
+  roles: string[];
   profile: { full_name: string; phone: string | null; active: boolean } | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
