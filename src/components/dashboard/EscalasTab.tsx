@@ -206,14 +206,14 @@ export function EscalasTab() {
           <h3 className="font-sans font-bold text-lg">Escalas de Serviço</h3>
           <p className="text-sm text-muted-foreground">Confira quem está escalado para cada função.</p>
         </div>
-        {isAdmin && (
+        {canManage && (
           <Button onClick={() => { showForm ? resetForm() : setShowForm(true); }} variant={showForm ? "outline" : "default"} size="sm" className="gap-1.5">
             <Plus className="h-4 w-4" /> {showForm ? "Cancelar" : "Nova Escala"}
           </Button>
         )}
       </div>
 
-      {isAdmin && showForm && (
+      {canManage && showForm && (
         <Card>
           <CardHeader>
             <CardTitle className="font-sans text-base">{editingId ? "Editar Escala" : "Nova Escala"}</CardTitle>
@@ -225,9 +225,11 @@ export function EscalasTab() {
                 <Select value={form.funcao} onValueChange={(v) => setForm({ ...form, funcao: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {Object.entries(FUNCAO_LABELS).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
+                    {Object.entries(FUNCAO_LABELS)
+                      .filter(([k]) => manageableFuncoes.includes(k))
+                      .map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
