@@ -39,8 +39,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (rolesRes.data) {
-      setIsAdmin(rolesRes.data.some((r) => r.role === "admin"));
-      setIsPastor(rolesRes.data.some((r) => r.role === "pastor"));
+      const roleList = rolesRes.data.map((r) => r.role);
+      setRoles(roleList);
+      setIsAdmin(roleList.includes("admin"));
+      setIsPastor(roleList.includes("pastor"));
+    }
     }
   };
 
