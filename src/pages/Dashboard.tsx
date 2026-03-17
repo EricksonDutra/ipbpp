@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import {
   DollarSign, TrendingUp, TrendingDown, HandHeart,
-  FolderKanban, Heart, Send, Users, ClipboardList, Megaphone, BookHeart
+  FolderKanban, Heart, Send, Users, ClipboardList, Megaphone, BookHeart, CalendarDays
 } from "lucide-react";
 import { PastoralTab } from "@/components/dashboard/PastoralTab";
 import { toast } from "sonner";
