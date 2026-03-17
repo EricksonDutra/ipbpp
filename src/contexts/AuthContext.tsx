@@ -44,7 +44,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsAdmin(roleList.includes("admin"));
       setIsPastor(roleList.includes("pastor"));
     }
-    }
   };
 
   useEffect(() => {
