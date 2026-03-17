@@ -304,7 +304,7 @@ export function EscalasTab() {
                         {e.observacoes && <p className="text-xs text-muted-foreground truncate">{e.observacoes}</p>}
                       </div>
                     </div>
-                    {isAdmin && (
+                    {manageableFuncoes.includes(e.funcao) && (
                       <div className="flex gap-1 shrink-0 ml-2">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(e)}>
                           <Edit2 className="h-3.5 w-3.5" />
