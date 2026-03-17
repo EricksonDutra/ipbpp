@@ -60,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsAdmin(false);
           setIsPastor(false);
           setIsActive(false);
+          setRoles([]);
         }
         setLoading(false);
       }
