@@ -44,6 +44,39 @@ export type Database = {
         }
         Relationships: []
       }
+      escalas: {
+        Row: {
+          created_at: string
+          data: string
+          funcao: Database["public"]["Enums"]["escala_funcao"]
+          horario: string
+          id: string
+          observacoes: string | null
+          responsavel_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data: string
+          funcao: Database["public"]["Enums"]["escala_funcao"]
+          horario?: string
+          id?: string
+          observacoes?: string | null
+          responsavel_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data?: string
+          funcao?: Database["public"]["Enums"]["escala_funcao"]
+          horario?: string
+          id?: string
+          observacoes?: string | null
+          responsavel_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       financial_reports: {
         Row: {
           created_at: string
@@ -316,6 +349,13 @@ export type Database = {
         | "diacono"
         | "presidente_sociedade"
         | "gestor_midias"
+      escala_funcao:
+        | "recepcao"
+        | "midias"
+        | "diaconia"
+        | "liturgia"
+        | "ebd"
+        | "pregacao"
       notice_category: "public" | "members"
       pastoral_record_type: "visita" | "aconselhamento" | "anotacao"
       request_status: "pendente" | "aprovada" | "rejeitada"
@@ -459,6 +499,14 @@ export const Constants = {
         "diacono",
         "presidente_sociedade",
         "gestor_midias",
+      ],
+      escala_funcao: [
+        "recepcao",
+        "midias",
+        "diaconia",
+        "liturgia",
+        "ebd",
+        "pregacao",
       ],
       notice_category: ["public", "members"],
       pastoral_record_type: ["visita", "aconselhamento", "anotacao"],

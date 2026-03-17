@@ -15,9 +15,10 @@ import {
 } from "@/components/ui/select";
 import {
   DollarSign, TrendingUp, TrendingDown, HandHeart,
-  FolderKanban, Heart, Send, Users, ClipboardList, Megaphone, BookHeart
+  FolderKanban, Heart, Send, Users, ClipboardList, Megaphone, BookHeart, CalendarDays
 } from "lucide-react";
 import { PastoralTab } from "@/components/dashboard/PastoralTab";
+import { EscalasTab } from "@/components/dashboard/EscalasTab";
 import { toast } from "sonner";
 
 export default function Dashboard() {
@@ -191,7 +192,7 @@ export default function Dashboard() {
         </div>
 
         <Tabs defaultValue="financeiro" className="space-y-6">
-          <TabsList className={`grid w-full ${(isAdmin || isPastor) ? 'grid-cols-5' : 'grid-cols-4'} max-w-2xl`}>
+          <TabsList className={`grid w-full ${(isAdmin || isPastor) ? 'grid-cols-6' : 'grid-cols-5'} max-w-3xl`}>
             <TabsTrigger value="financeiro" className="gap-1.5">
               <HandHeart className="h-4 w-4" /> Financeiro
             </TabsTrigger>
@@ -200,6 +201,9 @@ export default function Dashboard() {
             </TabsTrigger>
             <TabsTrigger value="projetos" className="gap-1.5">
               <FolderKanban className="h-4 w-4" /> Projetos
+            </TabsTrigger>
+            <TabsTrigger value="escalas" className="gap-1.5">
+              <CalendarDays className="h-4 w-4" /> Escalas
             </TabsTrigger>
             <TabsTrigger value="solicitacoes" className="gap-1.5">
               <ClipboardList className="h-4 w-4" /> Solicitações
@@ -428,6 +432,9 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
+          </TabsContent>
+          <TabsContent value="escalas">
+            <EscalasTab />
           </TabsContent>
           {(isAdmin || isPastor) && (
             <TabsContent value="pastoral">
