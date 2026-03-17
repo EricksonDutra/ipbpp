@@ -8,6 +8,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isPastor: boolean;
   isActive: boolean;
+  roles: string[];
   profile: { full_name: string; phone: string | null; active: boolean } | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -22,6 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isPastor, setIsPastor] = useState(false);
   const [isActive, setIsActive] = useState(false);
+  const [roles, setRoles] = useState<string[]>([]);
   const [profile, setProfile] = useState<AuthContextType["profile"]>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,8 +39,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (rolesRes.data) {
-      setIsAdmin(rolesRes.data.some((r) => r.role === "admin"));
-      setIsPastor(rolesRes.data.some((r) => r.role === "pastor"));
+      const roleList = rolesRes.data.map((r) => r.role);
+      setRoles(roleList);
+      setIsAdmin(roleList.includes("admin"));
+      setIsPastor(roleList.includes("pastor"));
     }
   };
 
@@ -55,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsAdmin(false);
           setIsPastor(false);
           setIsActive(false);
+          setRoles([]);
         }
         setLoading(false);
       }
@@ -82,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, isAdmin, isPastor, isActive, profile, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, isAdmin, isPastor, isActive, roles, profile, loading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -41,15 +41,35 @@ const FUNCAO_COLORS: Record<string, string> = {
   pregacao: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
 };
 
+// Map roles to the funcoes they can manage
+const ROLE_FUNCAO_MAP: Record<string, string[]> = {
+  admin: Object.keys(FUNCAO_LABELS),
+  gestor_midias: ["midias"],
+  pastor: ["ebd", "liturgia", "pregacao"],
+  diacono: ["diaconia"],
+  presidente_sociedade: ["recepcao"],
+};
+
+function getManageableFuncoes(roles: string[]): string[] {
+  const funcoes = new Set<string>();
+  for (const role of roles) {
+    const allowed = ROLE_FUNCAO_MAP[role];
+    if (allowed) allowed.forEach((f) => funcoes.add(f));
+  }
+  return Array.from(funcoes);
+}
+
 export function EscalasTab() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, roles } = useAuth();
+  const manageableFuncoes = getManageableFuncoes(roles);
+  const canManage = manageableFuncoes.length > 0;
   const [escalas, setEscalas] = useState<Escala[]>([]);
   const [members, setMembers] = useState<{ id: string; full_name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
-    funcao: "recepcao",
+    funcao: manageableFuncoes[0] || "recepcao",
     data: "",
     horario: "09:00",
     responsavel_id: "",
@@ -58,8 +78,8 @@ export function EscalasTab() {
 
   useEffect(() => {
     fetchEscalas();
-    if (isAdmin) fetchMembers();
-  }, [isAdmin]);
+    if (canManage) fetchMembers();
+  }, [canManage]);
 
   const fetchEscalas = async () => {
     // Fetch escalas with responsavel profile name
@@ -186,14 +206,14 @@ export function EscalasTab() {
           <h3 className="font-sans font-bold text-lg">Escalas de Serviço</h3>
           <p className="text-sm text-muted-foreground">Confira quem está escalado para cada função.</p>
         </div>
-        {isAdmin && (
+        {canManage && (
           <Button onClick={() => { showForm ? resetForm() : setShowForm(true); }} variant={showForm ? "outline" : "default"} size="sm" className="gap-1.5">
             <Plus className="h-4 w-4" /> {showForm ? "Cancelar" : "Nova Escala"}
           </Button>
         )}
       </div>
 
-      {isAdmin && showForm && (
+      {canManage && showForm && (
         <Card>
           <CardHeader>
             <CardTitle className="font-sans text-base">{editingId ? "Editar Escala" : "Nova Escala"}</CardTitle>
@@ -205,9 +225,11 @@ export function EscalasTab() {
                 <Select value={form.funcao} onValueChange={(v) => setForm({ ...form, funcao: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {Object.entries(FUNCAO_LABELS).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
+                    {Object.entries(FUNCAO_LABELS)
+                      .filter(([k]) => manageableFuncoes.includes(k))
+                      .map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -282,7 +304,7 @@ export function EscalasTab() {
                         {e.observacoes && <p className="text-xs text-muted-foreground truncate">{e.observacoes}</p>}
                       </div>
                     </div>
-                    {isAdmin && (
+                    {manageableFuncoes.includes(e.funcao) && (
                       <div className="flex gap-1 shrink-0 ml-2">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(e)}>
                           <Edit2 className="h-3.5 w-3.5" />
