@@ -13,7 +13,7 @@ import {
   UserPlus, Users, CheckCircle, XCircle,
   DollarSign, FolderKanban, Plus, Trash2, Pencil,
   Upload, FileText, X, HeartHandshake, ClipboardList,
-  Check, Megaphone,
+  Check, Megaphone, BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
