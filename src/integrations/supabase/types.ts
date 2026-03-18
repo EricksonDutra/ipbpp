@@ -355,6 +355,39 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_bulletins: {
+        Row: {
+          active: boolean
+          bulletin_pdf_url: string | null
+          created_at: string
+          id: string
+          pastoral_message: string | null
+          published_at: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          bulletin_pdf_url?: string | null
+          created_at?: string
+          id?: string
+          pastoral_message?: string | null
+          published_at?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          bulletin_pdf_url?: string | null
+          created_at?: string
+          id?: string
+          pastoral_message?: string | null
+          published_at?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
