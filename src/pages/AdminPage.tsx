@@ -1007,6 +1007,11 @@ export default function AdminPage() {
               </DialogContent>
             </Dialog>
           </TabsContent>
+
+          {/* ─── TAB: BOLETIM ─── */}
+          <TabsContent value="boletim">
+            <BulletinManagement />
+          </TabsContent>
         </Tabs>
 
       </main>
