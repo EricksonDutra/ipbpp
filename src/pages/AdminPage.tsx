@@ -440,7 +440,7 @@ export default function AdminPage() {
         </div>
 
         <Tabs defaultValue="membros" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 max-w-4xl">
+          <TabsList className="grid w-full grid-cols-7 max-w-5xl">
             <TabsTrigger value="membros" className="gap-1.5">
               <Users className="h-4 w-4" /> Membros
             </TabsTrigger>
@@ -458,6 +458,9 @@ export default function AdminPage() {
             </TabsTrigger>
             <TabsTrigger value="avisos" className="gap-1.5">
               <Megaphone className="h-4 w-4" /> Avisos
+            </TabsTrigger>
+            <TabsTrigger value="boletim" className="gap-1.5">
+              <BookOpen className="h-4 w-4" /> Boletim
             </TabsTrigger>
           </TabsList>
 
