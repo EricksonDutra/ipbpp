@@ -132,6 +132,9 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Boletim Semanal & Mensagem Pastoral */}
+      <BulletinSection />
+
       {/* Contato */}
       <section id="contato" className="py-20 bg-section-warm">
         <div className="container max-w-2xl text-center">
