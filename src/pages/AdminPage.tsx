@@ -13,7 +13,7 @@ import {
   UserPlus, Users, CheckCircle, XCircle,
   DollarSign, FolderKanban, Plus, Trash2, Pencil,
   Upload, FileText, X, HeartHandshake, ClipboardList,
-  Check, Megaphone,
+  Check, Megaphone, BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -22,6 +22,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { BulletinManagement } from "@/components/admin/BulletinManagement";
 
 interface MemberRow {
   id: string;
@@ -439,7 +440,7 @@ export default function AdminPage() {
         </div>
 
         <Tabs defaultValue="membros" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 max-w-4xl">
+          <TabsList className="grid w-full grid-cols-7 max-w-5xl">
             <TabsTrigger value="membros" className="gap-1.5">
               <Users className="h-4 w-4" /> Membros
             </TabsTrigger>
@@ -457,6 +458,9 @@ export default function AdminPage() {
             </TabsTrigger>
             <TabsTrigger value="avisos" className="gap-1.5">
               <Megaphone className="h-4 w-4" /> Avisos
+            </TabsTrigger>
+            <TabsTrigger value="boletim" className="gap-1.5">
+              <BookOpen className="h-4 w-4" /> Boletim
             </TabsTrigger>
           </TabsList>
 
@@ -1002,6 +1006,11 @@ export default function AdminPage() {
                 </form>
               </DialogContent>
             </Dialog>
+          </TabsContent>
+
+          {/* ─── TAB: BOLETIM ─── */}
+          <TabsContent value="boletim">
+            <BulletinManagement />
           </TabsContent>
         </Tabs>
 

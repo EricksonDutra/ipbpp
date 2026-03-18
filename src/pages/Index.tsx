@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { BookOpen, Clock, Heart, MapPin, Phone, Users, Megaphone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { BulletinSection } from "@/components/BulletinSection";
 
 const Index = () => {
   const [notices, setNotices] = useState<any[]>([]);
@@ -130,6 +131,9 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Boletim Semanal & Mensagem Pastoral */}
+      <BulletinSection />
 
       {/* Contato */}
       <section id="contato" className="py-20 bg-section-warm">
