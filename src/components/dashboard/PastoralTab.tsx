@@ -167,29 +167,13 @@ export function PastoralTab() {
           </Button>
         </div>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                  <UserRound className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="font-sans text-xl">{selectedMember.full_name}</CardTitle>
-                  <CardDescription>
-                    {selectedMember.phone || "Sem telefone"} •{" "}
-                    <Badge variant={selectedMember.active ? "default" : "destructive"} className="text-xs">
-                      {selectedMember.active ? "Ativo" : "Inativo"}
-                    </Badge>
-                  </CardDescription>
-                </div>
-              </div>
-              <Button onClick={() => setShowNewRecord(true)} className="gap-1.5">
-                <Plus className="h-4 w-4" /> Novo Registro
-              </Button>
-            </div>
-          </CardHeader>
-        </Card>
+        <MemberProfile member={selectedMember} onUpdate={fetchData} />
+
+        <div className="flex justify-end">
+          <Button onClick={() => setShowNewRecord(true)} className="gap-1.5">
+            <Plus className="h-4 w-4" /> Novo Registro
+          </Button>
+        </div>
 
         {/* New record form */}
         {showNewRecord && (
