@@ -59,7 +59,7 @@ export function PastoralTab() {
 
   const fetchData = async () => {
     const [membersRes, recordsRes] = await Promise.all([
-      supabase.from("profiles").select("id, full_name, phone, active").order("full_name"),
+      supabase.from("profiles").select("id, full_name, phone, active, endereco, data_nascimento, data_batismo, data_membresia, estado_civil, profissao, observacoes").order("full_name"),
       supabase.from("pastoral_records").select("*").order("record_date", { ascending: false }),
     ]);
     setMembers(membersRes.data || []);
