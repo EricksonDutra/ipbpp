@@ -251,25 +251,46 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          data_batismo: string | null
+          data_membresia: string | null
+          data_nascimento: string | null
+          endereco: string | null
+          estado_civil: string | null
           full_name: string
           id: string
+          observacoes: string | null
           phone: string | null
+          profissao: string | null
           updated_at: string
         }
         Insert: {
           active?: boolean
           created_at?: string
+          data_batismo?: string | null
+          data_membresia?: string | null
+          data_nascimento?: string | null
+          endereco?: string | null
+          estado_civil?: string | null
           full_name: string
           id: string
+          observacoes?: string | null
           phone?: string | null
+          profissao?: string | null
           updated_at?: string
         }
         Update: {
           active?: boolean
           created_at?: string
+          data_batismo?: string | null
+          data_membresia?: string | null
+          data_nascimento?: string | null
+          endereco?: string | null
+          estado_civil?: string | null
           full_name?: string
           id?: string
+          observacoes?: string | null
           phone?: string | null
+          profissao?: string | null
           updated_at?: string
         }
         Relationships: []
