@@ -7,18 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { UserRound, Plus, BookOpen, Calendar, Search, ArrowLeft, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { MemberProfile, MemberProfileData } from "./pastoral/MemberProfile";
 
-interface Member {
-  id: string;
-  full_name: string;
-  phone: string | null;
-  active: boolean;
-}
+type Member = MemberProfileData;
 
 interface PastoralRecord {
   id: string;
