@@ -162,21 +162,116 @@ const Index = () => {
       {/* Boletim Semanal & Mensagem Pastoral */}
       <BulletinSection />
 
-      {/* Contato */}
-      <section id="contato" className="py-20 bg-section-warm">
-        <div className="container max-w-2xl text-center">
-          <h2 className="text-3xl font-serif font-bold mb-4">Visite-nos</h2>
-          <p className="text-muted-foreground mb-8">
-            Estamos de portas abertas para recebê-lo. Venha nos fazer uma visita!
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <MapPin className="h-4 w-4 text-primary" />
-              <span>Ponta Porã, MS - Brasil</span>
+      {/* Transmissões ao Vivo - YouTube */}
+      <section className="py-20">
+        <div className="container">
+          <div className="text-center mb-10">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
+              <Youtube className="h-7 w-7 text-destructive" />
             </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Phone className="h-4 w-4 text-primary" />
-              <span>contato@ipbpontapora.org.br</span>
+            <h2 className="text-3xl font-serif font-bold mb-2">Transmissões ao Vivo</h2>
+            <p className="text-muted-foreground">Acompanhe nossos cultos e estudos pelo YouTube</p>
+          </div>
+          {videos.length > 0 ? (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 max-w-6xl mx-auto">
+              {videos.map((v) => (
+                <a
+                  key={v.videoId}
+                  href={`https://www.youtube.com/watch?v=${v.videoId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group"
+                >
+                  <Card className="overflow-hidden border shadow-sm hover:shadow-lg transition-all group-hover:-translate-y-1">
+                    <div className="aspect-video relative overflow-hidden">
+                      <img
+                        src={`https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg`}
+                        alt={v.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-full bg-destructive/90 flex items-center justify-center shadow-lg">
+                          <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                    <CardContent className="p-3">
+                      <h3 className="text-sm font-sans font-semibold line-clamp-2 group-hover:text-primary transition-colors">
+                        {v.title}
+                      </h3>
+                      {v.published && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(v.published).toLocaleDateString("pt-BR")}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-4">Nenhuma transmissão disponível no momento.</p>
+            </div>
+          )}
+          <div className="text-center mt-8">
+            <a href={YOUTUBE_CHANNEL_URL} target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" className="gap-2">
+                <Youtube className="h-4 w-4 text-destructive" /> Ver canal no YouTube
+              </Button>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Contato + Mapa */}
+      <section id="contato" className="py-20 bg-section-warm">
+        <div className="container">
+          <h2 className="text-3xl font-serif font-bold text-center mb-10">Visite-nos</h2>
+          <div className="grid gap-8 lg:grid-cols-2 max-w-5xl mx-auto items-start">
+            {/* Informações */}
+            <div className="space-y-6 text-center lg:text-left">
+              <p className="text-muted-foreground">
+                Estamos de portas abertas para recebê-lo. Venha nos fazer uma visita!
+              </p>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3 justify-center lg:justify-start">
+                  <MapPin className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-sans font-semibold text-sm">Endereço</p>
+                    <p className="text-sm text-muted-foreground">Rua Duque de Caxias, 495 - Centro</p>
+                    <p className="text-sm text-muted-foreground">Ponta Porã - MS, Brasil</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 justify-center lg:justify-start">
+                  <Phone className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-sans font-semibold text-sm">Contato</p>
+                    <p className="text-sm text-muted-foreground">contato@ipbpontapora.org.br</p>
+                  </div>
+                </div>
+              </div>
+              <Link to="/visitante">
+                <Button className="gap-2 mt-2">
+                  <Users className="h-4 w-4" /> Registrar Visita
+                </Button>
+              </Link>
+            </div>
+            {/* Google Maps */}
+            <div className="rounded-xl overflow-hidden shadow-lg border">
+              <iframe
+                title="Localização da IPB Ponta Porã"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3621.0!2d-55.7258!3d-22.5362!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2sRua+Duque+de+Caxias%2C+495+-+Centro%2C+Ponta+Por%C3%A3+-+MS!5e0!3m2!1spt-BR!2sbr!4v1"
+                width="100%"
+                height="350"
+                style={{ border: 0 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
             </div>
           </div>
         </div>
