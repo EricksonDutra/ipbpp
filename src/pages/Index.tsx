@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { BookOpen, Clock, Heart, MapPin, Phone, Users, Megaphone } from "lucide-react";
+import { BookOpen, Clock, Heart, MapPin, Phone, Users, Megaphone, Youtube } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { BulletinSection } from "@/components/BulletinSection";
 
