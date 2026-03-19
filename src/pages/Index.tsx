@@ -9,8 +9,12 @@ import { BookOpen, Clock, Heart, MapPin, Phone, Users, Megaphone, Youtube } from
 import { supabase } from "@/integrations/supabase/client";
 import { BulletinSection } from "@/components/BulletinSection";
 
+const YOUTUBE_CHANNEL_HANDLE = "ipbppora";
+const YOUTUBE_CHANNEL_URL = "https://www.youtube.com/@ipbppora";
+
 const Index = () => {
   const [notices, setNotices] = useState<any[]>([]);
+  const [videos, setVideos] = useState<any[]>([]);
 
   useEffect(() => {
     supabase
@@ -20,6 +24,29 @@ const Index = () => {
       .eq("active", true)
       .order("created_at", { ascending: false })
       .then(({ data }) => setNotices(data || []));
+
+    // Fetch latest YouTube videos via RSS feed (no API key needed)
+    fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?user=${YOUTUBE_CHANNEL_HANDLE}`)}`)
+      .then(res => res.text())
+      .then(xml => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(xml, "text/xml");
+        const entries = doc.querySelectorAll("entry");
+        const vids: any[] = [];
+        entries.forEach((entry, i) => {
+          if (i >= 4) return;
+          const videoId = entry.querySelector("yt\\:videoId, videoId")?.textContent;
+          const title = entry.querySelector("title")?.textContent;
+          const published = entry.querySelector("published")?.textContent;
+          if (videoId) vids.push({ videoId, title, published });
+        });
+        setVideos(vids);
+      })
+      .catch(() => {
+        // Fallback: try with channel handle format
+        fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?channel_id=`)}`)
+          .catch(() => {});
+      });
   }, []);
 
   return (
