@@ -5,16 +5,15 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { BookOpen, Clock, Heart, MapPin, Phone, Users, Megaphone, Youtube } from "lucide-react";
+import { BookOpen, Clock, Heart, MapPin, Phone, Users, Megaphone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { BulletinSection } from "@/components/BulletinSection";
+import { YouTubeLiveSection } from "@/components/YouTubeLiveSection";
 
-const YOUTUBE_CHANNEL_HANDLE = "ipbppora";
 const YOUTUBE_CHANNEL_URL = "https://www.youtube.com/@ipbppora";
 
 const Index = () => {
   const [notices, setNotices] = useState<any[]>([]);
-  const [videos, setVideos] = useState<any[]>([]);
 
   useEffect(() => {
     supabase
@@ -24,27 +23,6 @@ const Index = () => {
       .eq("active", true)
       .order("created_at", { ascending: false })
       .then(({ data }) => setNotices(data || []));
-
-    // Fetch latest YouTube videos via RSS feed (no API key needed)
-    const CHANNEL_ID = "UCgFyAKO0xapPwviW9D_WIWg";
-    const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${CHANNEL_ID}`;
-    fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}`)
-      .then(res => res.text())
-      .then(xml => {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(xml, "text/xml");
-        const entries = doc.querySelectorAll("entry");
-        const vids: any[] = [];
-        entries.forEach((entry, i) => {
-          if (i >= 4) return;
-          const videoId = entry.querySelector("yt\\:videoId, videoId")?.textContent;
-          const title = entry.querySelector("title")?.textContent;
-          const published = entry.querySelector("published")?.textContent;
-          if (videoId) vids.push({ videoId, title, published });
-        });
-        setVideos(vids);
-      })
-      .catch(() => {});
   }, []);
 
   return (
@@ -110,7 +88,7 @@ const Index = () => {
           <div className="text-center max-w-2xl mx-auto mb-12">
             <h2 className="text-3xl font-serif font-bold text-foreground mb-4">Bem-vindo à nossa Igreja</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Somos uma comunidade de fé comprometida com os princípios da Reforma Protestante, 
+              Somos uma comunidade de fé comprometida com os princípios da Reforma Protestante,
               pregando fielmente as Escrituras e servindo a comunidade de Ponta Porã e região.
             </p>
           </div>
@@ -161,69 +139,7 @@ const Index = () => {
       <BulletinSection />
 
       {/* Transmissões ao Vivo - YouTube */}
-      <section className="py-20">
-        <div className="container">
-          <div className="text-center mb-10">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
-              <Youtube className="h-7 w-7 text-destructive" />
-            </div>
-            <h2 className="text-3xl font-serif font-bold mb-2">Transmissões ao Vivo</h2>
-            <p className="text-muted-foreground">Acompanhe nossos cultos e estudos pelo YouTube</p>
-          </div>
-          {videos.length > 0 ? (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 max-w-6xl mx-auto">
-              {videos.map((v) => (
-                <a
-                  key={v.videoId}
-                  href={`https://www.youtube.com/watch?v=${v.videoId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group"
-                >
-                  <Card className="overflow-hidden border shadow-sm hover:shadow-lg transition-all group-hover:-translate-y-1">
-                    <div className="aspect-video relative overflow-hidden">
-                      <img
-                        src={`https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg`}
-                        alt={v.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                      />
-                      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                        <div className="w-12 h-12 rounded-full bg-destructive/90 flex items-center justify-center shadow-lg">
-                          <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M8 5v14l11-7z" />
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-                    <CardContent className="p-3">
-                      <h3 className="text-sm font-sans font-semibold line-clamp-2 group-hover:text-primary transition-colors">
-                        {v.title}
-                      </h3>
-                      {v.published && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(v.published).toLocaleDateString("pt-BR")}
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-                </a>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground mb-4">Nenhuma transmissão disponível no momento.</p>
-            </div>
-          )}
-          <div className="text-center mt-8">
-            <a href={YOUTUBE_CHANNEL_URL} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" className="gap-2">
-                <Youtube className="h-4 w-4 text-destructive" /> Ver canal no YouTube
-              </Button>
-            </a>
-          </div>
-        </div>
-      </section>
+      <YouTubeLiveSection channelUrl={YOUTUBE_CHANNEL_URL} />
 
       {/* Contato + Mapa */}
       <section id="contato" className="py-20 bg-section-warm">
