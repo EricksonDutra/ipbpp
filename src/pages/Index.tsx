@@ -26,7 +26,9 @@ const Index = () => {
       .then(({ data }) => setNotices(data || []));
 
     // Fetch latest YouTube videos via RSS feed (no API key needed)
-    fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?user=${YOUTUBE_CHANNEL_HANDLE}`)}`)
+    const CHANNEL_ID = "UCgFyAKO0xapPwviW9D_WIWg";
+    const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${CHANNEL_ID}`;
+    fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}`)
       .then(res => res.text())
       .then(xml => {
         const parser = new DOMParser();
@@ -42,11 +44,7 @@ const Index = () => {
         });
         setVideos(vids);
       })
-      .catch(() => {
-        // Fallback: try with channel handle format
-        fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?channel_id=`)}`)
-          .catch(() => {});
-      });
+      .catch(() => {});
   }, []);
 
   return (
