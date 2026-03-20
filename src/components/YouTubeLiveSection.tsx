@@ -37,7 +37,7 @@ export const YouTubeLiveSection = ({ channelUrl }: { channelUrl: string }) => {
     let isMounted = true;
 
     const loadYoutubeFeed = async () => {
-      setIsLoading(true);
+      if (!isMounted) return;
 
       const { data, error } = await supabase.functions.invoke<YoutubeFeedResponse>("youtube-channel-feed", {
         body: {},
@@ -63,8 +63,12 @@ export const YouTubeLiveSection = ({ channelUrl }: { channelUrl: string }) => {
 
     loadYoutubeFeed();
 
+    // Auto-refresh every 3 minutes to detect new lives
+    const intervalId = setInterval(loadYoutubeFeed, 3 * 60 * 1000);
+
     return () => {
       isMounted = false;
+      clearInterval(intervalId);
     };
   }, [channelUrl]);
 
