@@ -168,11 +168,6 @@ const Index = () => {
                   </div>
                 </div>
               </div>
-              <Link to="/visitante">
-                <Button className="gap-2 mt-2">
-                  <Users className="h-4 w-4" /> Registrar Visita
-                </Button>
-              </Link>
             </div>
             {/* Google Maps */}
             <div className="rounded-xl overflow-hidden shadow-lg border">

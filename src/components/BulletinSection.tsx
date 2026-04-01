@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileText, Download, BookOpen } from "lucide-react";
 
 interface Bulletin {
@@ -13,8 +14,11 @@ interface Bulletin {
   published_at: string;
 }
 
+const PREVIEW_LENGTH = 200;
+
 export function BulletinSection() {
   const [bulletin, setBulletin] = useState<Bulletin | null>(null);
+  const [showFullMessage, setShowFullMessage] = useState(false);
 
   useEffect(() => {
     supabase
@@ -33,6 +37,10 @@ export function BulletinSection() {
   const pdfPublicUrl = bulletin.bulletin_pdf_url
     ? supabase.storage.from("bulletins").getPublicUrl(bulletin.bulletin_pdf_url).data.publicUrl
     : null;
+
+  const message = bulletin.pastoral_message || "";
+  const isLong = message.length > PREVIEW_LENGTH;
+  const preview = isLong ? message.slice(0, PREVIEW_LENGTH).trimEnd() + "…" : message;
 
   return (
     <aside className="py-16 bg-background">
@@ -71,21 +79,45 @@ export function BulletinSection() {
           </Card>
 
           {/* Pastoral message */}
-          {bulletin.pastoral_message && (
+          {message && (
             <Card className="border-primary/20 shadow-md">
               <CardContent className="p-6">
                 <h3 className="font-serif font-bold text-lg mb-3 flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-primary" /> Mensagem Pastoral
                 </h3>
                 <Separator className="mb-4" />
-                <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                  {bulletin.pastoral_message}
-                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                  {preview}
+                </p>
+                {isLong && (
+                  <Button
+                    variant="link"
+                    className="mt-2 px-0 h-auto text-primary font-semibold"
+                    onClick={() => setShowFullMessage(true)}
+                  >
+                    Leia mais
+                  </Button>
+                )}
               </CardContent>
             </Card>
           )}
         </div>
       </div>
+
+      {/* Full message dialog */}
+      <Dialog open={showFullMessage} onOpenChange={setShowFullMessage}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-serif flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-primary" /> Mensagem Pastoral
+            </DialogTitle>
+          </DialogHeader>
+          <Separator className="my-2" />
+          <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+            {message}
+          </div>
+        </DialogContent>
+      </Dialog>
     </aside>
   );
 }
