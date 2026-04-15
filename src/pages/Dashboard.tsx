@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { MemberHeader } from "@/components/Header";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,12 +15,20 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   DollarSign, TrendingUp, TrendingDown, HandHeart,
-  FolderKanban, Heart, Send, Users, ClipboardList, Megaphone, BookHeart, CalendarDays
+  FolderKanban, Heart, Send, Users, ClipboardList, Megaphone, BookHeart, CalendarDays, Shield
 } from "lucide-react";
 import { PastoralTab } from "@/components/dashboard/PastoralTab";
 import { EscalasTab } from "@/components/dashboard/EscalasTab";
 import { toast } from "sonner";
+
+const MONTHS_OPTIONS = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
 
 export default function Dashboard() {
   const { user, profile, isAdmin, isPastor } = useAuth();
@@ -34,6 +43,10 @@ export default function Dashboard() {
   const [requestForm, setRequestForm] = useState({ request_type: "salao_social" as string, description: "" });
   const [submittingRequest, setSubmittingRequest] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Filter state
+  const [filterYear, setFilterYear] = useState<string>(String(new Date().getFullYear()));
+  const [filterMonth, setFilterMonth] = useState<string>("todos");
 
   useEffect(() => {
     fetchData();
@@ -54,6 +67,34 @@ export default function Dashboard() {
     setMemberNotices(noticesRes.data || []);
     setLoading(false);
   };
+
+  // Distinct years from financials
+  const availableYears = useMemo(() => {
+    const years = [...new Set(financials.map((f) => f.year))].sort((a, b) => b - a);
+    if (years.length === 0) years.push(new Date().getFullYear());
+    return years;
+  }, [financials]);
+
+  // Filtered financials
+  const filteredFinancials = useMemo(() => {
+    return financials.filter((f) => {
+      if (filterYear !== "todos" && f.year !== Number(filterYear)) return false;
+      if (filterMonth !== "todos" && f.month !== filterMonth) return false;
+      return true;
+    });
+  }, [financials, filterYear, filterMonth]);
+
+  const totalReceita = filteredFinancials.reduce((s, d) => s + Number(d.receita), 0);
+  const totalDespesa = filteredFinancials.reduce((s, d) => s + Number(d.despesa), 0);
+  const saldo = totalReceita - totalDespesa;
+
+  const saldoColor = saldo > 0 ? "text-success" : saldo < 0 ? "text-destructive" : "text-muted-foreground";
+
+  const filterLabel = useMemo(() => {
+    const y = filterYear === "todos" ? "todos os anos" : filterYear;
+    const m = filterMonth === "todos" ? "" : ` – ${filterMonth}`;
+    return `Exibindo registros de ${y}${m}`;
+  }, [filterYear, filterMonth]);
 
   const handlePrayerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,10 +164,6 @@ export default function Dashboard() {
     }
   };
 
-  const totalReceita = financials.reduce((s, d) => s + Number(d.receita), 0);
-  const totalDespesa = financials.reduce((s, d) => s + Number(d.despesa), 0);
-  const saldo = totalReceita - totalDespesa;
-
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-muted/30">
@@ -143,10 +180,23 @@ export default function Dashboard() {
       <MemberHeader />
       <main className="flex-1 container py-8">
         <div className="mb-8">
-          <h1 className="text-2xl font-sans font-bold">
-            Olá, {profile?.full_name || "Membro"}!
-          </h1>
-          <p className="text-sm text-muted-foreground">Acompanhe as informações da nossa igreja.</p>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h1 className="text-2xl font-sans font-bold">
+                Olá, {profile?.full_name || "Membro"}!
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Acompanhe os pedidos de oração, finanças e projetos da igreja em um só lugar.
+              </p>
+            </div>
+            {(isAdmin || isPastor) && (
+              <Link to="/admin">
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <Shield className="h-4 w-4" /> Ir para Painel Administrativo
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
 
         {/* Avisos para Membros */}
@@ -158,7 +208,7 @@ export default function Dashboard() {
             <div className="grid gap-3 md:grid-cols-2">
               {memberNotices.map((n) => (
                 <Card key={n.id} className="border-primary/30 bg-primary/5">
-                  <CardContent className="p-4">
+                  <CardContent className="p-5">
                     <h3 className="font-sans font-bold text-sm">{n.title}</h3>
                     <p className="text-sm text-muted-foreground mt-1">{n.content}</p>
                     <p className="text-xs text-muted-foreground mt-2">
@@ -171,24 +221,42 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Financial Summary Cards */}
         <div className="grid gap-4 md:grid-cols-3 mb-8">
-          {[
-            { icon: DollarSign, label: "Receitas", value: `R$ ${totalReceita.toLocaleString("pt-BR")}`, color: "text-success" },
-            { icon: TrendingDown, label: "Despesas", value: `R$ ${totalDespesa.toLocaleString("pt-BR")}`, color: "text-destructive" },
-            { icon: TrendingUp, label: "Saldo", value: `R$ ${saldo.toLocaleString("pt-BR")}`, color: "text-primary" },
-          ].map((item) => (
-            <Card key={item.label}>
-              <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                  <item.icon className={`h-5 w-5 ${item.color}`} />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">{item.label}</p>
-                  <p className="text-lg font-bold">{item.value}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          <Card>
+            <CardContent className="flex items-center gap-4 p-5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success/10">
+                <DollarSign className="h-5 w-5 text-success" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Receitas</p>
+                <p className="text-xl font-bold text-success">R$ {totalReceita.toLocaleString("pt-BR")}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex items-center gap-4 p-5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
+                <TrendingDown className="h-5 w-5 text-destructive" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Despesas</p>
+                <p className="text-xl font-bold text-destructive">R$ {totalDespesa.toLocaleString("pt-BR")}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex items-center gap-4 p-5">
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${saldo > 0 ? "bg-success/10" : saldo < 0 ? "bg-destructive/10" : "bg-muted"}`}>
+                <TrendingUp className={`h-5 w-5 ${saldoColor}`} />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Saldo</p>
+                <p className={`text-xl font-bold ${saldoColor}`}>R$ {saldo.toLocaleString("pt-BR")}</p>
+                <p className="text-xs text-muted-foreground">Somatório dos relatórios do período selecionado</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <Tabs defaultValue="financeiro" className="space-y-6">
@@ -224,48 +292,91 @@ export default function Dashboard() {
                 <CardDescription>Receitas e despesas mensais da igreja.</CardDescription>
               </CardHeader>
               <CardContent>
-                {financials.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">Nenhum relatório financeiro cadastrado ainda.</p>
+                {/* Period Filters */}
+                <div className="flex flex-wrap items-end gap-3 mb-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Ano</label>
+                    <Select value={filterYear} onValueChange={setFilterYear}>
+                      <SelectTrigger className="w-[120px] h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos</SelectItem>
+                        {availableYears.map((y) => (
+                          <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Mês</label>
+                    <Select value={filterMonth} onValueChange={setFilterMonth}>
+                      <SelectTrigger className="w-[140px] h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos</SelectItem>
+                        {MONTHS_OPTIONS.map((m) => (
+                          <SelectItem key={m} value={m}>{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mb-4">{filterLabel}</p>
+
+                {filteredFinancials.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    Nenhum relatório encontrado para este período. Fale com a administração para cadastrar os relatórios financeiros.
+                  </p>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-3 font-semibold">Mês</th>
-                          <th className="text-right py-3 font-semibold">Receita</th>
-                          <th className="text-right py-3 font-semibold">Despesa</th>
-                          <th className="text-right py-3 font-semibold">Saldo</th>
-                          <th className="text-center py-3 font-semibold">Detalhes</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {financials.map((row) => (
-                          <tr key={row.id} className="border-b last:border-0 hover:bg-muted/50">
-                            <td className="py-3">{row.month}/{row.year}</td>
-                            <td className="text-right text-success font-medium">R$ {Number(row.receita).toLocaleString("pt-BR")}</td>
-                            <td className="text-right text-destructive font-medium">R$ {Number(row.despesa).toLocaleString("pt-BR")}</td>
-                            <td className="text-right font-bold">R$ {(Number(row.receita) - Number(row.despesa)).toLocaleString("pt-BR")}</td>
-                            <td className="text-center">
-                              {row.document_url ? (
-                                <Button size="sm" variant="outline" className="gap-1" onClick={() => handleOpenDocument(row.document_url)}>
-                                  <FileText className="h-3.5 w-3.5" /> Ver
-                                </Button>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">—</span>
-                              )}
-                            </td>
+                    <TooltipProvider>
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-3 font-semibold">Período (Mês/Ano)</th>
+                            <th className="text-right py-3 font-semibold">Receita</th>
+                            <th className="text-right py-3 font-semibold">Despesa</th>
+                            <th className="text-right py-3 font-semibold">Saldo</th>
+                            <th className="text-center py-3 font-semibold">Relatório detalhado</th>
                           </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="border-t-2 font-bold">
-                          <td className="py-3">Total</td>
-                          <td className="text-right text-success">R$ {totalReceita.toLocaleString("pt-BR")}</td>
-                          <td className="text-right text-destructive">R$ {totalDespesa.toLocaleString("pt-BR")}</td>
-                          <td className="text-right">R$ {saldo.toLocaleString("pt-BR")}</td>
-                        </tr>
-                      </tfoot>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {filteredFinancials.map((row) => {
+                            const rowSaldo = Number(row.receita) - Number(row.despesa);
+                            const rowSaldoColor = rowSaldo > 0 ? "text-success" : rowSaldo < 0 ? "text-destructive" : "text-muted-foreground";
+                            return (
+                              <tr key={row.id} className="border-b last:border-0 hover:bg-muted/50">
+                                <td className="py-3">{row.month}/{row.year}</td>
+                                <td className="text-right text-success font-medium">R$ {Number(row.receita).toLocaleString("pt-BR")}</td>
+                                <td className="text-right text-destructive font-medium">R$ {Number(row.despesa).toLocaleString("pt-BR")}</td>
+                                <td className={`text-right font-bold ${rowSaldoColor}`}>R$ {rowSaldo.toLocaleString("pt-BR")}</td>
+                                <td className="text-center">
+                                  {row.document_url ? (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button size="sm" variant="outline" className="gap-1" onClick={() => handleOpenDocument(row.document_url)}>
+                                          <FileText className="h-3.5 w-3.5" /> Ver
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Abrir relatório detalhado</TooltipContent>
+                                    </Tooltip>
+                                  ) : (
+                                    <Badge variant="outline" className="text-xs text-muted-foreground">Sem anexo</Badge>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2 bg-muted/50 font-bold">
+                            <td className="py-3">Total</td>
+                            <td className="text-right text-success">R$ {totalReceita.toLocaleString("pt-BR")}</td>
+                            <td className="text-right text-destructive">R$ {totalDespesa.toLocaleString("pt-BR")}</td>
+                            <td className={`text-right ${saldoColor}`}>R$ {saldo.toLocaleString("pt-BR")}</td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </TooltipProvider>
                   </div>
                 )}
               </CardContent>
@@ -319,7 +430,7 @@ export default function Dashboard() {
                 ) : (
                   prayers.map((p) => (
                     <Card key={p.id}>
-                      <CardContent className="p-4">
+                      <CardContent className="p-5">
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center gap-2">
                             <span className="font-semibold text-sm">{p.author_name}</span>
@@ -410,7 +521,7 @@ export default function Dashboard() {
                 ) : (
                   requests.map((r) => (
                     <Card key={r.id}>
-                      <CardContent className="p-4">
+                      <CardContent className="p-5">
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center gap-2">
                             <Badge variant="secondary" className="text-xs">{REQUEST_TYPE_LABELS[r.request_type] || r.request_type}</Badge>
