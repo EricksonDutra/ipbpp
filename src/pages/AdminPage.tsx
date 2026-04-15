@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { MemberHeader } from "@/components/Header";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,12 +13,16 @@ import {
   UserPlus, Users, CheckCircle, XCircle,
   DollarSign, FolderKanban, Plus, Trash2, Pencil,
   Upload, FileText, X, HeartHandshake, ClipboardList,
-  Check, Megaphone, BookOpen,
+  Check, Megaphone, BookOpen, AlertTriangle, Search, ArrowUpDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -96,6 +100,24 @@ const MONTHS = [
 
 const PROJECT_STATUSES = ["Planejamento", "Em andamento", "Concluído"];
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ALLOWED_EXTENSIONS = ["pdf", "png", "jpg", "jpeg", "doc", "docx", "xls", "xlsx"];
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getFileTypeLabel(name: string): string {
+  const ext = name.split(".").pop()?.toLowerCase() || "";
+  if (ext === "pdf") return "PDF";
+  if (["png", "jpg", "jpeg"].includes(ext)) return "Imagem";
+  if (["doc", "docx"].includes(ext)) return "Word";
+  if (["xls", "xlsx"].includes(ext)) return "Excel";
+  return ext.toUpperCase();
+}
+
 export default function AdminPage() {
   const { session } = useAuth();
 
@@ -106,6 +128,7 @@ export default function AdminPage() {
   const [submittingMember, setSubmittingMember] = useState(false);
   const [showRoleDialog, setShowRoleDialog] = useState(false);
   const [roleTarget, setRoleTarget] = useState<MemberRow | null>(null);
+  const [memberSearch, setMemberSearch] = useState("");
 
   // Financial state
   const [financials, setFinancials] = useState<FinancialRow[]>([]);
@@ -115,6 +138,7 @@ export default function AdminPage() {
   const [submittingFinancial, setSubmittingFinancial] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [financialSortAsc, setFinancialSortAsc] = useState(false);
 
   // Projects state
   const [projects, setProjects] = useState<ProjectRow[]>([]);
@@ -125,6 +149,7 @@ export default function AdminPage() {
 
   // Visitors state
   const [visitors, setVisitors] = useState<VisitorRow[]>([]);
+  const [visitorToDelete, setVisitorToDelete] = useState<VisitorRow | null>(null);
 
   // Requests state
   const [memberRequests, setMemberRequests] = useState<RequestRow[]>([]);
@@ -162,7 +187,6 @@ export default function AdminPage() {
 
     const mappedMembers = (membersRes.data || []).map((m: any) => ({ ...m, roles: rolesMap[m.id] || [] }));
     setMembers(mappedMembers);
-    // Keep role dialog in sync
     setRoleTarget(prev => prev ? mappedMembers.find((m: MemberRow) => m.id === prev.id) || null : null);
     setFinancials(financialsRes.data || []);
     setProjects(projectsRes.data || []);
@@ -171,6 +195,32 @@ export default function AdminPage() {
     setNotices(noticesRes.data as NoticeRow[] || []);
     setLoading(false);
   };
+
+  // Filtered members
+  const filteredMembers = useMemo(() => {
+    if (!memberSearch.trim()) return members;
+    const q = memberSearch.toLowerCase();
+    return members.filter((m) => m.full_name.toLowerCase().includes(q));
+  }, [members, memberSearch]);
+
+  // Sorted financials
+  const sortedFinancials = useMemo(() => {
+    if (financialSortAsc) {
+      return [...financials].sort((a, b) => {
+        if (a.year !== b.year) return a.year - b.year;
+        return MONTHS.indexOf(a.month) - MONTHS.indexOf(b.month);
+      });
+    }
+    return financials;
+  }, [financials, financialSortAsc]);
+
+  // Sorted notices: active first, then inactive
+  const sortedNotices = useMemo(() => {
+    return [...notices].sort((a, b) => {
+      if (a.active !== b.active) return a.active ? -1 : 1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }, [notices]);
 
   // ─── Members ───────────────────────────────────────
   const handleRegister = async (e: React.FormEvent) => {
@@ -198,6 +248,7 @@ export default function AdminPage() {
       fetchAll();
     }
   };
+
   const toggleRole = async (userId: string, role: string, add: boolean) => {
     if (add) {
       const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: role as any });
@@ -211,7 +262,7 @@ export default function AdminPage() {
     fetchAll();
   };
 
-
+  // ─── Financial ────────────────────────────────────
   const openFinancialDialog = (row?: FinancialRow) => {
     if (row) {
       setEditingFinancial(row);
@@ -228,35 +279,55 @@ export default function AdminPage() {
     if (!selectedFile) return null;
     const ext = selectedFile.name.split(".").pop();
     const filePath = `${reportId}.${ext}`;
-
-    // Remove old file if exists
     await supabase.storage.from("financial-docs").remove([filePath]);
-
     const { error } = await supabase.storage
       .from("financial-docs")
       .upload(filePath, selectedFile, { upsert: true });
-
     if (error) {
       toast.error("Erro ao fazer upload: " + error.message);
       return null;
     }
-
-    // Store the file path, not a public URL (bucket is private)
     return filePath;
+  };
+
+  const handleFileSelect = (file: File | null) => {
+    if (!file) { setSelectedFile(null); return; }
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      toast.error(`Tipo de arquivo não permitido (.${ext}). Use: ${ALLOWED_EXTENSIONS.join(", ")}`);
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error(`Arquivo muito grande (${formatFileSize(file.size)}). Máximo permitido: 10 MB.`);
+      return;
+    }
+    setSelectedFile(file);
   };
 
   const handleFinancialSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmittingFinancial(true);
 
+    // Duplicate check (only for new records)
+    if (!editingFinancial) {
+      const duplicate = financials.find(
+        (f) => f.month === financialForm.month && f.year === financialForm.year
+      );
+      if (duplicate) {
+        toast.error(`Já existe um relatório para ${financialForm.month}/${financialForm.year}. Edite o registro existente.`);
+        setSubmittingFinancial(false);
+        setShowFinancialDialog(false);
+        openFinancialDialog(duplicate);
+        return;
+      }
+    }
+
     if (editingFinancial) {
       let documentUrl = editingFinancial.document_url;
-
       if (selectedFile) {
         const url = await uploadDocument(editingFinancial.id);
         if (url) documentUrl = url;
       }
-
       const { error } = await supabase.from("financial_reports").update({
         month: financialForm.month,
         year: financialForm.year,
@@ -267,14 +338,12 @@ export default function AdminPage() {
       if (error) toast.error("Erro ao atualizar: " + error.message);
       else toast.success("Relatório atualizado!");
     } else {
-      // Insert first to get ID, then upload
       const { data: inserted, error } = await supabase.from("financial_reports").insert({
         month: financialForm.month,
         year: financialForm.year,
         receita: financialForm.receita,
         despesa: financialForm.despesa,
       }).select("id").single();
-
       if (error) {
         toast.error("Erro ao criar: " + error.message);
       } else {
@@ -302,7 +371,6 @@ export default function AdminPage() {
   };
 
   const deleteFinancial = async (id: string) => {
-    // Also remove associated file
     const report = financials.find((f) => f.id === id);
     if (report?.document_url) {
       await supabase.storage.from("financial-docs").remove([report.document_url]);
@@ -359,10 +427,12 @@ export default function AdminPage() {
   };
 
   // ─── Visitors ─────────────────────────────────────
-  const deleteVisitor = async (id: string) => {
-    const { error } = await supabase.from("visitors").delete().eq("id", id);
+  const confirmDeleteVisitor = async () => {
+    if (!visitorToDelete) return;
+    const { error } = await supabase.from("visitors").delete().eq("id", visitorToDelete.id);
     if (error) toast.error("Erro ao excluir: " + error.message);
     else { toast.success("Visitante removido!"); fetchAll(); }
+    setVisitorToDelete(null);
   };
 
   // ─── Requests ─────────────────────────────────────
@@ -468,7 +538,16 @@ export default function AdminPage() {
 
           {/* ─── TAB: MEMBROS ─── */}
           <TabsContent value="membros">
-            <div className="flex justify-end mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div className="relative flex-1 min-w-[200px] max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar membro por nome..."
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                  className="pl-9 h-9"
+                />
+              </div>
               <Button onClick={() => setShowMemberForm(!showMemberForm)} className="gap-1.5">
                 <UserPlus className="h-4 w-4" /> Novo Membro
               </Button>
@@ -495,7 +574,7 @@ export default function AdminPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="font-sans flex items-center gap-2">
-                  <Users className="h-5 w-5" /> Membros ({members.length})
+                  <Users className="h-5 w-5" /> Membros ({filteredMembers.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -503,8 +582,10 @@ export default function AdminPage() {
                   <div className="flex justify-center py-8">
                     <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
                   </div>
-                ) : members.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">Nenhum membro cadastrado.</p>
+                ) : filteredMembers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    {memberSearch ? "Nenhum membro encontrado com esse nome." : "Nenhum membro cadastrado."}
+                  </p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -518,13 +599,16 @@ export default function AdminPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {members.map((m) => (
+                        {filteredMembers.map((m) => (
                           <tr key={m.id} className="border-b last:border-0 hover:bg-muted/50">
                             <td className="py-3 font-medium">{m.full_name}</td>
                             <td className="py-3 text-muted-foreground">{m.phone || "—"}</td>
                             <td className="py-3">
                               <div className="flex flex-wrap gap-1">
-                                {m.roles.filter(r => r !== "member").map(r => (
+                                {m.roles.includes("admin") && (
+                                  <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-100">Administrador</Badge>
+                                )}
+                                {m.roles.filter(r => r !== "member" && r !== "admin").map(r => (
                                   <Badge key={r} variant="secondary" className="text-xs">{ROLE_LABELS[r] || r}</Badge>
                                 ))}
                                 {m.roles.filter(r => r !== "member").length === 0 && (
@@ -605,45 +689,65 @@ export default function AdminPage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b">
-                          <th className="text-left py-3 font-semibold">Período</th>
+                          <th className="text-left py-3 font-semibold">
+                            <button
+                              type="button"
+                              className="flex items-center gap-1 hover:text-foreground transition-colors"
+                              onClick={() => setFinancialSortAsc(!financialSortAsc)}
+                            >
+                              Período <ArrowUpDown className="h-3.5 w-3.5" />
+                            </button>
+                          </th>
                           <th className="text-right py-3 font-semibold">Receita</th>
                           <th className="text-right py-3 font-semibold">Despesa</th>
                           <th className="text-right py-3 font-semibold">Saldo</th>
+                          <th className="text-center py-3 font-semibold">Status</th>
                           <th className="text-center py-3 font-semibold">Documento</th>
                           <th className="text-right py-3 font-semibold">Ações</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {financials.map((f) => (
-                          <tr key={f.id} className="border-b last:border-0 hover:bg-muted/50">
-                            <td className="py-3 font-medium">{f.month}/{f.year}</td>
-                            <td className="py-3 text-right font-medium">R$ {Number(f.receita).toLocaleString("pt-BR")}</td>
-                            <td className="py-3 text-right text-destructive font-medium">R$ {Number(f.despesa).toLocaleString("pt-BR")}</td>
-                            <td className="py-3 text-right font-bold">R$ {(Number(f.receita) - Number(f.despesa)).toLocaleString("pt-BR")}</td>
-                            <td className="py-3 text-center">
-                              {f.document_url ? (
-                                <div className="flex items-center justify-center gap-1">
-                                  <Button size="sm" variant="outline" className="gap-1" onClick={async () => {
-                                    const { data } = await supabase.storage.from("financial-docs").createSignedUrl(f.document_url!, 3600);
-                                    if (data?.signedUrl) window.open(data.signedUrl, '_blank');
-                                    else toast.error("Não foi possível abrir o documento.");
-                                  }}>
-                                    <FileText className="h-3.5 w-3.5" /> Ver
-                                  </Button>
-                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeDocument(f)}>
-                                    <X className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground text-xs">—</span>
-                              )}
-                            </td>
-                            <td className="py-3 text-right space-x-1">
-                              <Button size="icon" variant="ghost" onClick={() => openFinancialDialog(f)}><Pencil className="h-4 w-4" /></Button>
-                              <Button size="icon" variant="ghost" className="text-destructive" onClick={() => deleteFinancial(f.id)}><Trash2 className="h-4 w-4" /></Button>
-                            </td>
-                          </tr>
-                        ))}
+                        {sortedFinancials.map((f) => {
+                          const rowSaldo = Number(f.receita) - Number(f.despesa);
+                          const rowSaldoColor = rowSaldo > 0 ? "text-success" : rowSaldo < 0 ? "text-destructive" : "text-muted-foreground";
+                          return (
+                            <tr key={f.id} className="border-b last:border-0 hover:bg-muted/50">
+                              <td className="py-3 font-medium">{f.month}/{f.year}</td>
+                              <td className="py-3 text-right text-success font-medium">R$ {Number(f.receita).toLocaleString("pt-BR")}</td>
+                              <td className="py-3 text-right text-destructive font-medium">R$ {Number(f.despesa).toLocaleString("pt-BR")}</td>
+                              <td className={`py-3 text-right font-bold ${rowSaldoColor}`}>R$ {rowSaldo.toLocaleString("pt-BR")}</td>
+                              <td className="py-3 text-center">
+                                {f.document_url ? (
+                                  <Badge className="text-xs bg-success/10 text-success border-success/30 hover:bg-success/10">Com anexo</Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-xs text-muted-foreground">Sem anexo</Badge>
+                                )}
+                              </td>
+                              <td className="py-3 text-center">
+                                {f.document_url ? (
+                                  <div className="flex items-center justify-center gap-1">
+                                    <Button size="sm" variant="outline" className="gap-1" onClick={async () => {
+                                      const { data } = await supabase.storage.from("financial-docs").createSignedUrl(f.document_url!, 3600);
+                                      if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+                                      else toast.error("Não foi possível abrir o documento.");
+                                    }}>
+                                      <FileText className="h-3.5 w-3.5" /> Ver
+                                    </Button>
+                                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeDocument(f)}>
+                                      <X className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
+                              </td>
+                              <td className="py-3 text-right space-x-1">
+                                <Button size="icon" variant="ghost" onClick={() => openFinancialDialog(f)}><Pencil className="h-4 w-4" /></Button>
+                                <Button size="icon" variant="ghost" className="text-destructive" onClick={() => deleteFinancial(f.id)}><Trash2 className="h-4 w-4" /></Button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -654,54 +758,66 @@ export default function AdminPage() {
             <Dialog open={showFinancialDialog} onOpenChange={setShowFinancialDialog}>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>{editingFinancial ? "Editar Relatório" : "Novo Relatório Financeiro"}</DialogTitle>
+                  <DialogTitle>{editingFinancial ? "Editar Relatório Financeiro" : "Novo Relatório Financeiro"}</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleFinancialSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Mês</label>
-                      <Select value={financialForm.month} onValueChange={(v) => setFinancialForm({ ...financialForm, month: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {MONTHS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Ano</label>
-                      <Input type="number" value={financialForm.year} onChange={(e) => setFinancialForm({ ...financialForm, year: parseInt(e.target.value) || 0 })} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Receita (R$)</label>
-                      <Input type="number" step="0.01" value={financialForm.receita} onChange={(e) => setFinancialForm({ ...financialForm, receita: parseFloat(e.target.value) || 0 })} />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Despesa (R$)</label>
-                      <Input type="number" step="0.01" value={financialForm.despesa} onChange={(e) => setFinancialForm({ ...financialForm, despesa: parseFloat(e.target.value) || 0 })} />
+                <form onSubmit={handleFinancialSubmit} className="space-y-5">
+                  {/* Group: Período */}
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Período</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Mês</label>
+                        <Select value={financialForm.month} onValueChange={(v) => setFinancialForm({ ...financialForm, month: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {MONTHS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Ano</label>
+                        <Input type="number" value={financialForm.year} onChange={(e) => setFinancialForm({ ...financialForm, year: parseInt(e.target.value) || 0 })} />
+                      </div>
                     </div>
                   </div>
 
-                  {/* File upload */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Detalhamento (PDF, imagem, etc.)</label>
+                  {/* Group: Valores */}
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Valores</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Receita (R$)</label>
+                        <Input type="number" step="0.01" value={financialForm.receita} onChange={(e) => setFinancialForm({ ...financialForm, receita: parseFloat(e.target.value) || 0 })} />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Despesa (R$)</label>
+                        <Input type="number" step="0.01" value={financialForm.despesa} onChange={(e) => setFinancialForm({ ...financialForm, despesa: parseFloat(e.target.value) || 0 })} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Group: Documento */}
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Documento</p>
                     <input
                       ref={fileInputRef}
                       type="file"
                       accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx"
                       className="hidden"
-                      onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                      onChange={(e) => handleFileSelect(e.target.files?.[0] || null)}
                     />
                     <div className="flex items-center gap-2">
                       <Button type="button" variant="outline" className="gap-1.5" onClick={() => fileInputRef.current?.click()}>
                         <Upload className="h-4 w-4" /> {selectedFile ? "Trocar arquivo" : "Anexar arquivo"}
                       </Button>
                       {selectedFile && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <FileText className="h-4 w-4" />
-                          <span className="max-w-[200px] truncate">{selectedFile.name}</span>
-                          <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => setSelectedFile(null)}>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md px-3 py-1.5">
+                          <FileText className="h-4 w-4 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="truncate max-w-[180px] text-xs font-medium text-foreground">{selectedFile.name}</p>
+                            <p className="text-xs">{formatFileSize(selectedFile.size)} · {getFileTypeLabel(selectedFile.name)}</p>
+                          </div>
+                          <Button type="button" size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={() => setSelectedFile(null)}>
                             <X className="h-3 w-3" />
                           </Button>
                         </div>
@@ -710,6 +826,7 @@ export default function AdminPage() {
                         <span className="text-xs text-muted-foreground">Documento atual será mantido</span>
                       )}
                     </div>
+                    <p className="text-xs text-muted-foreground mt-1">Máx. 10 MB · PDF, imagem, Word ou Excel</p>
                   </div>
 
                   <DialogFooter>
@@ -742,11 +859,15 @@ export default function AdminPage() {
                           <Badge variant={p.status === "Concluído" ? "default" : p.status === "Em andamento" ? "secondary" : "outline"}>
                             {p.status}
                           </Badge>
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openProjectDialog(p)}><Pencil className="h-3.5 w-3.5" /></Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => deleteProject(p.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openProjectDialog(p)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => deleteProject(p.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       </div>
-                      {p.description && <p className="text-sm text-muted-foreground mb-4">{p.description}</p>}
+                      <p className="text-sm text-muted-foreground mb-4">{p.description}</p>
                       <div className="space-y-1">
                         <div className="flex justify-between text-xs">
                           <span className="text-muted-foreground">Progresso</span>
@@ -800,17 +921,22 @@ export default function AdminPage() {
 
           {/* ─── TAB: VISITANTES ─── */}
           <TabsContent value="visitantes">
-            <div className="flex justify-end mb-4">
-              <Button onClick={() => {
-                const url = `${window.location.origin}/visitante`;
-                navigator.clipboard.writeText(url);
-                toast.success("Link copiado! Compartilhe com o visitante.");
-              }} variant="outline" className="gap-1.5 mr-2">
-                📋 Copiar Link
-              </Button>
-              <Button onClick={() => window.open("/visitante", "_blank")} className="gap-1.5">
-                <UserPlus className="h-4 w-4" /> Abrir Cadastro de Visitante
-              </Button>
+            <div className="mb-4">
+              <p className="text-sm text-muted-foreground mb-3">
+                Compartilhe o link com visitantes para preencherem seus dados pelo celular.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => {
+                  const url = `${window.location.origin}/visitante`;
+                  navigator.clipboard.writeText(url);
+                  toast.success("Link copiado! Compartilhe com o visitante.");
+                }} variant="outline" className="gap-1.5">
+                  📋 Copiar Link
+                </Button>
+                <Button onClick={() => window.open("/visitante", "_blank")} className="gap-1.5">
+                  <UserPlus className="h-4 w-4" /> Abrir Cadastro de Visitante
+                </Button>
+              </div>
             </div>
 
             <Card>
@@ -856,7 +982,7 @@ export default function AdminPage() {
                             </td>
                             <td className="py-3 text-muted-foreground">{new Date(v.visit_date + "T12:00:00").toLocaleDateString("pt-BR")}</td>
                             <td className="py-3 text-right">
-                              <Button size="icon" variant="ghost" className="text-destructive h-7 w-7" onClick={() => deleteVisitor(v.id)}>
+                              <Button size="icon" variant="ghost" className="text-destructive h-7 w-7" onClick={() => setVisitorToDelete(v)}>
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </td>
@@ -868,6 +994,24 @@ export default function AdminPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Visitor delete confirmation */}
+            <AlertDialog open={!!visitorToDelete} onOpenChange={(open) => !open && setVisitorToDelete(null)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remover visitante</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza que deseja remover <strong>{visitorToDelete?.full_name}</strong>? Esta ação não pode ser desfeita.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={confirmDeleteVisitor} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Remover
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </TabsContent>
 
           {/* ─── TAB: SOLICITAÇÕES ─── */}
@@ -884,10 +1028,13 @@ export default function AdminPage() {
                 ) : (
                   <div className="space-y-4">
                     {memberRequests.map((r) => (
-                      <Card key={r.id} className={r.status === "pendente" ? "border-amber-300" : ""}>
-                        <CardContent className="p-4">
+                      <Card key={r.id} className={r.status === "pendente" ? "border-amber-300 bg-amber-50/50" : ""}>
+                        <CardContent className="p-5">
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-2 flex-wrap">
+                              {r.status === "pendente" && (
+                                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                              )}
                               <Badge variant="secondary" className="text-xs">{REQUEST_TYPE_LABELS[r.request_type] || r.request_type}</Badge>
                               <Badge variant={r.status === "aprovada" ? "default" : r.status === "rejeitada" ? "destructive" : "outline"} className="text-xs">
                                 {STATUS_LABELS[r.status] || r.status}
@@ -944,16 +1091,20 @@ export default function AdminPage() {
               <p className="text-sm text-muted-foreground text-center py-8">Nenhum aviso cadastrado.</p>
             ) : (
               <div className="space-y-4">
-                {notices.map((n) => (
-                  <Card key={n.id} className={!n.active ? "opacity-50" : ""}>
-                    <CardContent className="p-4">
+                {sortedNotices.map((n) => (
+                  <Card key={n.id} className={!n.active ? "opacity-60" : ""}>
+                    <CardContent className="p-5">
                       <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-sans font-bold text-sm">{n.title}</h3>
-                          <Badge variant={n.category === "public" ? "default" : "secondary"} className="text-xs">
-                            {n.category === "public" ? "Público" : "Membros"}
-                          </Badge>
-                          {!n.active && <Badge variant="outline" className="text-xs">Inativo</Badge>}
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-sans font-bold text-sm">{n.title}</h3>
+                            <Badge variant={n.category === "public" ? "default" : "secondary"} className="text-xs">
+                              {n.category === "public" ? "Público" : "Membros"}
+                            </Badge>
+                          </div>
+                          {!n.active && (
+                            <span className="text-xs text-muted-foreground font-medium">Inativo</span>
+                          )}
                         </div>
                         <div className="flex items-center gap-1">
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => toggleNoticeActive(n.id, !n.active)}>
