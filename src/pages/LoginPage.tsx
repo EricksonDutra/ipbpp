@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lock, Mail, Church } from "lucide-react";
 import { toast } from "sonner";
+import { logAuth } from "@/lib/authTelemetry";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -17,16 +18,17 @@ export default function LoginPage() {
   const [forgotMode, setForgotMode] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [sendingReset, setSendingReset] = useState(false);
-  const { signIn, user, loading: authLoading } = useAuth();
+  const { signIn, user, loading: authLoading, isAdmin, isActive, roles } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     // Only redirect once auth context has finished loading profile/roles,
     // otherwise ProtectedRoute may bounce back to /membros.
     if (user && !authLoading) {
+      logAuth("login_redirect_to_dashboard", { userId: user.id, isAdmin, isActive, roles });
       navigate("/dashboard", { replace: true });
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, isAdmin, isActive, roles]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
