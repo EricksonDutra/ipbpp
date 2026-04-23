@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { AuthLoadingOverlay } from "@/components/AuthLoadingOverlay";
 import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
 import Dashboard from "./pages/Dashboard";
@@ -22,6 +23,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <AuthLoadingOverlay />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/membros" element={<LoginPage />} />
