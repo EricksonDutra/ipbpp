@@ -17,14 +17,16 @@ export default function LoginPage() {
   const [forgotMode, setForgotMode] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [sendingReset, setSendingReset] = useState(false);
-  const { signIn, user } = useAuth();
+  const { signIn, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
+    // Only redirect once auth context has finished loading profile/roles,
+    // otherwise ProtectedRoute may bounce back to /membros.
+    if (user && !authLoading) {
       navigate("/dashboard", { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +37,7 @@ export default function LoginPage() {
       toast.error("Erro ao entrar: " + error);
     } else {
       toast.success("Bem-vindo!");
-      navigate("/dashboard");
+      // Navigation handled by the effect above once profile/roles are ready.
     }
   };
 

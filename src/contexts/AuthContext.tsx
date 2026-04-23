@@ -25,53 +25,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isActive, setIsActive] = useState(false);
   const [roles, setRoles] = useState<string[]>([]);
   const [profile, setProfile] = useState<AuthContextType["profile"]>(null);
-  const [loading, setLoading] = useState(true);
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   const fetchUserData = async (userId: string) => {
-    const [profileRes, rolesRes] = await Promise.all([
-      supabase.from("profiles").select("full_name, phone, active").eq("id", userId).single(),
-      supabase.from("user_roles").select("role").eq("user_id", userId),
-    ]);
+    try {
+      const [profileRes, rolesRes] = await Promise.all([
+        supabase.from("profiles").select("full_name, phone, active").eq("id", userId).single(),
+        supabase.from("user_roles").select("role").eq("user_id", userId),
+      ]);
 
-    if (profileRes.data) {
-      setProfile(profileRes.data);
-      setIsActive(profileRes.data.active);
-    }
+      if (profileRes.data) {
+        setProfile(profileRes.data);
+        setIsActive(profileRes.data.active);
+      } else {
+        setProfile(null);
+        setIsActive(false);
+      }
 
-    if (rolesRes.data) {
-      const roleList = rolesRes.data.map((r) => r.role);
-      setRoles(roleList);
-      setIsAdmin(roleList.includes("admin"));
-      setIsPastor(roleList.includes("pastor"));
+      if (rolesRes.data) {
+        const roleList = rolesRes.data.map((r) => r.role);
+        setRoles(roleList);
+        setIsAdmin(roleList.includes("admin"));
+        setIsPastor(roleList.includes("pastor"));
+      } else {
+        setRoles([]);
+        setIsAdmin(false);
+        setIsPastor(false);
+      }
+    } finally {
+      setProfileLoading(false);
     }
+  };
+
+  const clearUserData = () => {
+    setProfile(null);
+    setIsAdmin(false);
+    setIsPastor(false);
+    setIsActive(false);
+    setRoles([]);
+    setProfileLoading(false);
   };
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      (_event, newSession) => {
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
 
-        if (session?.user) {
-          setTimeout(() => fetchUserData(session.user.id), 0);
+        if (newSession?.user) {
+          // Mark profile as loading so consumers wait for roles/profile
+          setProfileLoading(true);
+          // Defer Supabase calls to avoid deadlocks inside the auth callback
+          setTimeout(() => {
+            fetchUserData(newSession.user.id);
+          }, 0);
         } else {
-          setProfile(null);
-          setIsAdmin(false);
-          setIsPastor(false);
-          setIsActive(false);
-          setRoles([]);
+          clearUserData();
         }
-        setLoading(false);
+        setSessionLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserData(session.user.id);
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+      if (currentSession?.user) {
+        setProfileLoading(true);
+        fetchUserData(currentSession.user.id);
       }
-      setLoading(false);
+      setSessionLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -85,6 +108,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
   };
+
+  // Stay in loading state until we know the session AND (if logged in) the profile/roles
+  const loading = sessionLoading || (!!user && profileLoading);
 
   return (
     <AuthContext.Provider value={{ user, session, isAdmin, isPastor, isActive, roles, profile, loading, signIn, signOut }}>
