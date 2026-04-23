@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
+import { logAuth } from "@/lib/authTelemetry";
 
 interface AuthContextType {
   user: User | null;
@@ -29,22 +30,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profileLoading, setProfileLoading] = useState(false);
 
   const fetchUserData = async (userId: string) => {
+    logAuth("profile_loading_start", { userId });
     try {
       const [profileRes, rolesRes] = await Promise.all([
         supabase.from("profiles").select("full_name, phone, active").eq("id", userId).single(),
         supabase.from("user_roles").select("role").eq("user_id", userId),
       ]);
 
+      if (profileRes.error) {
+        logAuth("profile_load_error", { userId, scope: "profiles", code: profileRes.error.code });
+      }
+      if (rolesRes.error) {
+        logAuth("profile_load_error", { userId, scope: "user_roles", code: rolesRes.error.code });
+      }
+
+      let activeFlag = false;
       if (profileRes.data) {
         setProfile(profileRes.data);
         setIsActive(profileRes.data.active);
+        activeFlag = profileRes.data.active;
       } else {
         setProfile(null);
         setIsActive(false);
       }
 
+      let roleList: string[] = [];
       if (rolesRes.data) {
-        const roleList = rolesRes.data.map((r) => r.role);
+        roleList = rolesRes.data.map((r) => r.role);
         setRoles(roleList);
         setIsAdmin(roleList.includes("admin"));
         setIsPastor(roleList.includes("pastor"));
@@ -53,6 +65,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsAdmin(false);
         setIsPastor(false);
       }
+
+      logAuth("profile_loaded", {
+        userId,
+        roles: roleList,
+        isAdmin: roleList.includes("admin"),
+        isPastor: roleList.includes("pastor"),
+        isActive: activeFlag,
+        hasProfile: !!profileRes.data,
+      });
     } finally {
       setProfileLoading(false);
     }
@@ -65,11 +86,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsActive(false);
     setRoles([]);
     setProfileLoading(false);
+    logAuth("user_data_cleared");
   };
 
   useEffect(() => {
+    logAuth("session_loading_start");
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, newSession) => {
+      (event, newSession) => {
+        logAuth("auth_state_change", {
+          event,
+          hasSession: !!newSession,
+          userId: newSession?.user?.id ?? null,
+        });
+
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
@@ -88,6 +118,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      logAuth("session_loading_end", {
+        hasSession: !!currentSession,
+        userId: currentSession?.user?.id ?? null,
+      });
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       if (currentSession?.user) {
@@ -101,11 +135,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    logAuth("sign_in_attempt");
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    logAuth("sign_in_result", { ok: !error, errorCode: error?.code ?? null });
     return { error: error?.message ?? null };
   };
 
   const signOut = async () => {
+    logAuth("sign_out");
     await supabase.auth.signOut();
   };
 

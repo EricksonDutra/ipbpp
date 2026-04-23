@@ -1,8 +1,10 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { logAuth } from "@/lib/authTelemetry";
 
 export function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
   const { user, loading, isAdmin, isActive } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -12,9 +14,26 @@ export function ProtectedRoute({ children, adminOnly = false }: { children: Reac
     );
   }
 
-  if (!user) return <Navigate to="/membros" replace />;
-  if (!isActive && !isAdmin) return <Navigate to="/membros" replace />;
-  if (adminOnly && !isAdmin) return <Navigate to="/dashboard" replace />;
+  logAuth("protected_route_check", {
+    target: location.pathname,
+    adminOnly,
+    hasUser: !!user,
+    isAdmin,
+    isActive,
+  });
+
+  if (!user) {
+    logAuth("protected_route_redirect", { from: location.pathname, to: "/membros", reason: "no_user" });
+    return <Navigate to="/membros" replace />;
+  }
+  if (!isActive && !isAdmin) {
+    logAuth("protected_route_redirect", { from: location.pathname, to: "/membros", reason: "inactive_non_admin" });
+    return <Navigate to="/membros" replace />;
+  }
+  if (adminOnly && !isAdmin) {
+    logAuth("protected_route_redirect", { from: location.pathname, to: "/dashboard", reason: "not_admin" });
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return <>{children}</>;
 }
